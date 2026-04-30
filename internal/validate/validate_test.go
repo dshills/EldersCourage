@@ -205,6 +205,59 @@ func TestDataRejectsPhase4TalentUnknownPrerequisite(t *testing.T) {
 	}
 }
 
+func TestDataAcceptsPhase5Items(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "phase4/skills.json", `[
+		{"id":"ember_bolt","classId":"ember_sage","name":"Ember Bolt","description":"Burn.","icon":"res://bolt.png","targetType":"enemy","resource":"mana","resourceCost":10,"cooldownTurns":0,"effects":[{"type":"damage","amount":10}],"messageTemplate":"Burn {damage}."}
+	]`)
+	writeFile(t, root, "phase5/items.json", `[
+		{"id":"phase5_identify_scroll","name":"Identify Scroll","type":"consumable","description":"Reveal.","icon":"res://scroll.png","quantity":1,"stackable":true,"equippable":false,"defaultKnowledgeState":"known","attunable":false,"properties":[]},
+		{"id":"phase5_ashen_ring","name":"Ashen Ring","type":"trinket","description":"Ring.","icon":"res://ring.png","quantity":1,"stackable":false,"equippable":true,"equipmentSlot":"trinket","stats":{},"defaultKnowledgeState":"unidentified","attunable":true,"maxAttunementLevel":3,"properties":[
+			{"id":"ember_memory","name":"Ember Memory","description":"Power.","kind":"stat_modifier","visibility":"hidden","revealed":false,"cursed":false,"requirements":[{"type":"identify"}],"effects":[{"type":"stat_bonus","stat":"spellPower","amount":1}]},
+			{"id":"hungry_spark","name":"Hungry Spark","description":"Bolt.","kind":"skill_modifier","visibility":"locked_by_attunement","revealed":false,"cursed":false,"requirements":[{"type":"attunement","value":2}],"effects":[{"type":"damage_bonus","skillId":"ember_bolt","amount":3}]},
+			{"id":"blood_price","name":"Blood Price","description":"Cost.","kind":"curse","visibility":"hidden","revealed":false,"cursed":true,"requirements":[{"type":"combat_use"}],"effects":[{"type":"health_cost","amount":2}]}
+		]}
+	]`)
+
+	if _, err := Data(root); err != nil {
+		t.Fatalf("Data returned error: %v", err)
+	}
+}
+
+func TestDataRejectsPhase5UnknownSkillReference(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "phase5/items.json", `[
+		{"id":"phase5_ashen_ring","name":"Ashen Ring","type":"trinket","description":"Ring.","icon":"res://ring.png","quantity":1,"stackable":false,"equippable":true,"equipmentSlot":"trinket","stats":{},"defaultKnowledgeState":"unidentified","attunable":true,"maxAttunementLevel":3,"properties":[
+			{"id":"hungry_spark","name":"Hungry Spark","description":"Bolt.","kind":"skill_modifier","visibility":"locked_by_attunement","revealed":false,"cursed":false,"requirements":[{"type":"attunement","value":2}],"effects":[{"type":"damage_bonus","skillId":"missing_skill","amount":3}]}
+		]}
+	]`)
+
+	_, err := Data(root)
+	if err == nil {
+		t.Fatal("Data returned nil error for unknown phase5 skill")
+	}
+	if !strings.Contains(err.Error(), "unknown skill") {
+		t.Fatalf("error = %q, want unknown skill", err.Error())
+	}
+}
+
+func TestDataRejectsPhase5AttunementRequirementOnNonAttunableItem(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "phase5/items.json", `[
+		{"id":"phase5_charm","name":"Charm","type":"trinket","description":"Charm.","icon":"res://charm.png","quantity":1,"stackable":false,"equippable":true,"equipmentSlot":"trinket","stats":{},"defaultKnowledgeState":"unidentified","attunable":false,"properties":[
+			{"id":"locked","name":"Locked","description":"No.","kind":"stat_modifier","visibility":"locked_by_attunement","revealed":false,"cursed":false,"requirements":[{"type":"attunement","value":1}],"effects":[{"type":"stat_bonus","stat":"defense","amount":1}]}
+		]}
+	]`)
+
+	_, err := Data(root)
+	if err == nil {
+		t.Fatal("Data returned nil error for bad attunement requirement")
+	}
+	if !strings.Contains(err.Error(), "non-attunable") {
+		t.Fatalf("error = %q, want non-attunable", err.Error())
+	}
+}
+
 func TestDataRejectsMalformedJSON(t *testing.T) {
 	root := t.TempDir()
 	writeFile(t, root, "items/broken.json", `{"id":`)

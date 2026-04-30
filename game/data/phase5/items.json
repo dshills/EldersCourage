@@ -1,0 +1,201 @@
+[
+  {
+    "id": "phase5_identify_scroll",
+    "name": "Identify Scroll",
+    "type": "consumable",
+    "description": "Reveals hidden truths bound inside an item.",
+    "icon": "res://assets/icons/items/consumable_generic.png",
+    "quantity": 1,
+    "stackable": true,
+    "equippable": false,
+    "defaultKnowledgeState": "known",
+    "properties": [],
+    "attunable": false
+  },
+  {
+    "id": "phase5_ashen_ring",
+    "name": "Ashen Ring",
+    "unidentifiedName": "Unidentified Ring",
+    "unidentifiedDescription": "A blackened ring warm to the touch. It feels like a coal that forgot how to die.",
+    "type": "trinket",
+    "description": "A blackened ring that remembers old flame.",
+    "icon": "res://assets/icons/items/ring_accursed.png",
+    "unidentifiedIcon": "res://assets/icons/items/ring_accursed.png",
+    "quantity": 1,
+    "stackable": false,
+    "equippable": true,
+    "equipmentSlot": "trinket",
+    "stats": {},
+    "defaultKnowledgeState": "unidentified",
+    "attunable": true,
+    "maxAttunementLevel": 3,
+    "properties": [
+      {
+        "id": "phase5_ashen_ring_ember_memory",
+        "name": "Ember Memory",
+        "description": "+1 spell power.",
+        "kind": "stat_modifier",
+        "visibility": "hidden",
+        "revealed": false,
+        "cursed": false,
+        "requirements": [{ "type": "identify" }],
+        "effects": [{ "type": "stat_bonus", "stat": "spellPower", "amount": 1 }]
+      },
+      {
+        "id": "phase5_ashen_ring_hungry_spark",
+        "name": "Hungry Spark",
+        "description": "Ember Bolt deals +3 damage.",
+        "kind": "skill_modifier",
+        "visibility": "locked_by_attunement",
+        "revealed": false,
+        "cursed": false,
+        "requirements": [{ "type": "attunement", "value": 2 }],
+        "effects": [{ "type": "damage_bonus", "skillId": "ember_bolt", "amount": 3 }]
+      },
+      {
+        "id": "phase5_ashen_ring_blood_price",
+        "name": "Blood Price",
+        "description": "Lose 2 health whenever you use a skill.",
+        "kind": "curse",
+        "visibility": "hidden",
+        "revealed": false,
+        "cursed": true,
+        "requirements": [{ "type": "combat_use" }],
+        "effects": [{ "type": "health_cost", "amount": 2 }]
+      }
+    ]
+  },
+  {
+    "id": "phase5_roadwardens_notched_blade",
+    "name": "Roadwarden's Notched Blade",
+    "type": "weapon",
+    "description": "A road-worn blade notched by vows and hard use.",
+    "icon": "res://assets/items/sword.png",
+    "quantity": 1,
+    "stackable": false,
+    "equippable": true,
+    "equipmentSlot": "weapon",
+    "stats": { "strength": 2 },
+    "defaultKnowledgeState": "partially_identified",
+    "attunable": true,
+    "maxAttunementLevel": 3,
+    "properties": [
+      {
+        "id": "phase5_notched_blade_steady_edge",
+        "name": "Steady Edge",
+        "description": "+1 defense.",
+        "kind": "stat_modifier",
+        "visibility": "hidden",
+        "revealed": false,
+        "cursed": false,
+        "requirements": [{ "type": "identify" }],
+        "effects": [{ "type": "stat_bonus", "stat": "defense", "amount": 1 }]
+      },
+      {
+        "id": "phase5_notched_blade_oath_bite",
+        "name": "Oath Bite",
+        "description": "Guarded Strike deals +2 damage.",
+        "kind": "skill_modifier",
+        "visibility": "locked_by_attunement",
+        "revealed": false,
+        "cursed": false,
+        "requirements": [{ "type": "attunement", "value": 1 }],
+        "effects": [{ "type": "damage_bonus", "skillId": "guarded_strike", "amount": 2 }]
+      },
+      {
+        "id": "phase5_notched_blade_old_weight",
+        "name": "Old Weight",
+        "description": "-1 spell power while equipped.",
+        "kind": "curse",
+        "visibility": "hidden",
+        "revealed": false,
+        "cursed": true,
+        "requirements": [{ "type": "equip" }],
+        "effects": [{ "type": "stat_penalty", "stat": "spellPower", "amount": -1 }]
+      }
+    ]
+  },
+  {
+    "id": "phase5_whisperthread_cloak",
+    "name": "Whisperthread Cloak",
+    "unidentifiedName": "Unidentified Armor",
+    "unidentifiedDescription": "A soft cloak stitched with thread that never stops whispering.",
+    "type": "armor",
+    "description": "A soft cloak stitched with grave-thread.",
+    "icon": "res://assets/icons/items/armor_generic.png",
+    "unidentifiedIcon": "res://assets/icons/items/armor_generic.png",
+    "quantity": 1,
+    "stackable": false,
+    "equippable": true,
+    "equipmentSlot": "armor",
+    "stats": { "defense": 1 },
+    "defaultKnowledgeState": "unidentified",
+    "attunable": true,
+    "maxAttunementLevel": 3,
+    "properties": [
+      {
+        "id": "phase5_whisperthread_quiet_hem",
+        "name": "Quiet Hem",
+        "description": "+1 defense.",
+        "kind": "stat_modifier",
+        "visibility": "hidden",
+        "revealed": false,
+        "cursed": false,
+        "requirements": [{ "type": "identify" }],
+        "effects": [{ "type": "stat_bonus", "stat": "defense", "amount": 1 }]
+      },
+      {
+        "id": "phase5_whisperthread_graves_favor",
+        "name": "Grave's Favor",
+        "description": "Grave Touch deals +2 damage.",
+        "kind": "skill_modifier",
+        "visibility": "locked_by_attunement",
+        "revealed": false,
+        "cursed": false,
+        "requirements": [{ "type": "attunement", "value": 2 }],
+        "effects": [{ "type": "damage_bonus", "skillId": "grave_touch", "amount": 2 }]
+      }
+    ]
+  },
+  {
+    "id": "phase5_elder_glass_charm",
+    "name": "Elder Glass Charm",
+    "unidentifiedName": "Unidentified Trinket",
+    "unidentifiedDescription": "A glass charm clouded by a pale inner light.",
+    "type": "trinket",
+    "description": "A pale charm that clears thought when held to the light.",
+    "icon": "res://assets/items/fire_rune.png",
+    "unidentifiedIcon": "res://assets/items/fire_rune.png",
+    "quantity": 1,
+    "stackable": false,
+    "equippable": true,
+    "equipmentSlot": "trinket",
+    "stats": {},
+    "defaultKnowledgeState": "unidentified",
+    "attunable": false,
+    "properties": [
+      {
+        "id": "phase5_elder_glass_clear_thought",
+        "name": "Clear Thought",
+        "description": "+10 maximum mana.",
+        "kind": "resource_modifier",
+        "visibility": "hidden",
+        "revealed": false,
+        "cursed": false,
+        "requirements": [{ "type": "identify" }],
+        "effects": [{ "type": "stat_bonus", "stat": "maxManaBonus", "amount": 10 }]
+      },
+      {
+        "id": "phase5_elder_glass_patient_light",
+        "name": "Patient Light",
+        "description": "+1 spell power.",
+        "kind": "stat_modifier",
+        "visibility": "locked_by_level",
+        "revealed": false,
+        "cursed": false,
+        "requirements": [{ "type": "player_level", "value": 3 }],
+        "effects": [{ "type": "stat_bonus", "stat": "spellPower", "amount": 1 }]
+      }
+    ]
+  }
+]

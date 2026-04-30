@@ -186,6 +186,9 @@ func validateDocument(path string, value any, seenIDs map[string]string) error {
 	if strings.Contains(cleanPath, "/phase4/talents.json") {
 		return validatePhase4TalentDocument(path, value)
 	}
+	if strings.Contains(cleanPath, "/phase5/items.json") {
+		return validatePhase5ItemDocument(path, value)
+	}
 	if strings.Contains(cleanPath, "/items/") {
 		return validateItemDocument(path, value)
 	}
@@ -426,6 +429,158 @@ func validatePhase3Stats(path string, itemID any, stats map[string]any) error {
 		}
 		if _, ok := value.(float64); !ok {
 			return fmt.Errorf("%s: phase3 item %q stat %q must be numeric", path, itemID, stat)
+		}
+	}
+	return nil
+}
+
+func validatePhase5ItemDocument(path string, value any) error {
+	seenPropertyIDs := map[string]bool{}
+	for _, item := range records(value) {
+		for _, field := range []string{"id", "name", "type", "description", "icon", "defaultKnowledgeState"} {
+			if raw, ok := item[field].(string); !ok || strings.TrimSpace(raw) == "" {
+				return fmt.Errorf("%s: phase5 item missing string field %q", path, field)
+			}
+		}
+		itemType, _ := item["type"].(string)
+		if !validString(itemType, []string{"currency", "weapon", "armor", "trinket", "consumable", "quest", "rune"}) {
+			return fmt.Errorf("%s: phase5 item %q has invalid type %q", path, item["id"], itemType)
+		}
+		if quantity, ok := item["quantity"].(float64); !ok || quantity < 0 {
+			return fmt.Errorf("%s: phase5 item %q quantity must be non-negative numeric", path, item["id"])
+		}
+		equippable, ok := item["equippable"].(bool)
+		if !ok {
+			return fmt.Errorf("%s: phase5 item %q equippable must be boolean", path, item["id"])
+		}
+		if _, ok := item["stackable"].(bool); !ok {
+			return fmt.Errorf("%s: phase5 item %q stackable must be boolean", path, item["id"])
+		}
+		knowledgeState, _ := item["defaultKnowledgeState"].(string)
+		if !validString(knowledgeState, []string{"known", "unidentified", "partially_identified", "identified"}) {
+			return fmt.Errorf("%s: phase5 item %q has invalid defaultKnowledgeState %q", path, item["id"], knowledgeState)
+		}
+		if equippable {
+			slot, ok := item["equipmentSlot"].(string)
+			if !ok || !validString(slot, []string{"weapon", "armor", "trinket"}) {
+				return fmt.Errorf("%s: phase5 item %q has invalid equipmentSlot %q", path, item["id"], item["equipmentSlot"])
+			}
+			if stats, ok := item["stats"].(map[string]any); ok {
+				if err := validatePhase3Stats(path, item["id"], stats); err != nil {
+					return err
+				}
+			} else {
+				return fmt.Errorf("%s: phase5 item %q requires stats object", path, item["id"])
+			}
+		}
+		attunable, ok := item["attunable"].(bool)
+		if !ok {
+			return fmt.Errorf("%s: phase5 item %q attunable must be boolean", path, item["id"])
+		}
+		if attunable {
+			if value, ok := item["maxAttunementLevel"].(float64); !ok || value <= 0 {
+				return fmt.Errorf("%s: phase5 item %q requires positive maxAttunementLevel", path, item["id"])
+			}
+		}
+		properties, ok := item["properties"].([]any)
+		if !ok {
+			return fmt.Errorf("%s: phase5 item %q requires properties array", path, item["id"])
+		}
+		for _, rawProperty := range properties {
+			property, ok := rawProperty.(map[string]any)
+			if !ok {
+				return fmt.Errorf("%s: phase5 item %q property must be object", path, item["id"])
+			}
+			if err := validatePhase5Property(path, item, property, attunable, seenPropertyIDs); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func validatePhase5Property(path string, item map[string]any, property map[string]any, attunable bool, seenPropertyIDs map[string]bool) error {
+	for _, field := range []string{"id", "name", "description", "kind", "visibility"} {
+		if raw, ok := property[field].(string); !ok || strings.TrimSpace(raw) == "" {
+			return fmt.Errorf("%s: phase5 item %q property missing string field %q", path, item["id"], field)
+		}
+	}
+	propertyID := property["id"].(string)
+	if seenPropertyIDs[propertyID] {
+		return fmt.Errorf("%s: duplicate phase5 property id %q", path, propertyID)
+	}
+	seenPropertyIDs[propertyID] = true
+	kind, _ := property["kind"].(string)
+	if !validString(kind, []string{"stat_modifier", "combat_modifier", "skill_modifier", "resource_modifier", "curse", "lore"}) {
+		return fmt.Errorf("%s: phase5 property %q has invalid kind %q", path, propertyID, kind)
+	}
+	visibility, _ := property["visibility"].(string)
+	if !validString(visibility, []string{"visible", "hidden", "locked_by_level", "locked_by_attunement"}) {
+		return fmt.Errorf("%s: phase5 property %q has invalid visibility %q", path, propertyID, visibility)
+	}
+	revealed, ok := property["revealed"].(bool)
+	if !ok {
+		return fmt.Errorf("%s: phase5 property %q revealed must be boolean", path, propertyID)
+	}
+	cursed, ok := property["cursed"].(bool)
+	if !ok {
+		return fmt.Errorf("%s: phase5 property %q cursed must be boolean", path, propertyID)
+	}
+	if cursed && kind != "curse" {
+		return fmt.Errorf("%s: phase5 property %q cursed properties must use kind curse", path, propertyID)
+	}
+	requirements, ok := property["requirements"].([]any)
+	if !ok {
+		return fmt.Errorf("%s: phase5 property %q requires requirements array", path, propertyID)
+	}
+	for _, rawRequirement := range requirements {
+		requirement, ok := rawRequirement.(map[string]any)
+		if !ok {
+			return fmt.Errorf("%s: phase5 property %q requirement must be object", path, propertyID)
+		}
+		requirementType, ok := requirement["type"].(string)
+		if !ok || !validString(requirementType, []string{"identify", "player_level", "attunement", "equip", "combat_use"}) {
+			return fmt.Errorf("%s: phase5 property %q has invalid requirement type %q", path, propertyID, requirement["type"])
+		}
+		if requirementType == "player_level" || requirementType == "attunement" {
+			value, ok := requirement["value"].(float64)
+			if !ok || value <= 0 {
+				return fmt.Errorf("%s: phase5 property %q requirement %q needs positive value", path, propertyID, requirementType)
+			}
+		}
+		if requirementType == "attunement" && !attunable {
+			return fmt.Errorf("%s: phase5 property %q has attunement requirement on non-attunable item", path, propertyID)
+		}
+	}
+	effects, ok := property["effects"].([]any)
+	if !ok {
+		return fmt.Errorf("%s: phase5 property %q requires effects array", path, propertyID)
+	}
+	for _, rawEffect := range effects {
+		effect, ok := rawEffect.(map[string]any)
+		if !ok {
+			return fmt.Errorf("%s: phase5 property %q effect must be object", path, propertyID)
+		}
+		effectType, ok := effect["type"].(string)
+		if !ok || !validString(effectType, []string{"stat_bonus", "stat_penalty", "damage_bonus", "damage_penalty", "mana_cost_modifier", "health_cost", "xp_modifier", "gold_modifier"}) {
+			return fmt.Errorf("%s: phase5 property %q has invalid effect type %q", path, propertyID, effect["type"])
+		}
+		if _, ok := effect["amount"].(float64); !ok {
+			return fmt.Errorf("%s: phase5 property %q effect amount must be numeric", path, propertyID)
+		}
+		if effectType == "stat_bonus" || effectType == "stat_penalty" {
+			stat, ok := effect["stat"].(string)
+			if !ok || !validString(stat, []string{"strength", "defense", "spellPower", "maxHealthBonus", "maxManaBonus"}) {
+				return fmt.Errorf("%s: phase5 property %q stat effect requires valid stat", path, propertyID)
+			}
+		}
+		if effectType == "damage_bonus" || effectType == "damage_penalty" || effectType == "mana_cost_modifier" {
+			if raw, ok := effect["skillId"].(string); !ok || strings.TrimSpace(raw) == "" {
+				return fmt.Errorf("%s: phase5 property %q effect requires skillId", path, propertyID)
+			}
+		}
+		if revealed && visibility != "visible" {
+			return fmt.Errorf("%s: phase5 property %q starts revealed but is not visible", path, propertyID)
 		}
 	}
 	return nil
@@ -1071,6 +1226,11 @@ func validateReferences(path string, value any, seenIDs map[string]string, itemT
 			return err
 		}
 	}
+	if strings.Contains(cleanPath, "/phase5/") {
+		if err := validatePhase5References(path, value, seenIDs); err != nil {
+			return err
+		}
+	}
 	if strings.Contains(cleanPath, "/items/") {
 		for _, item := range records(value) {
 			if curse, ok := item["curse"].(map[string]any); ok {
@@ -1201,6 +1361,32 @@ func validatePhase4References(path string, value any, seenIDs map[string]string)
 					if skillID, ok := effect["skillId"].(string); ok && skillID != "" {
 						if _, exists := seenIDs[skillID]; !exists {
 							return fmt.Errorf("%s: phase4 talent %q references unknown skill %q", path, node["id"], skillID)
+						}
+					}
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func validatePhase5References(path string, value any, seenIDs map[string]string) error {
+	cleanPath := filepath.ToSlash(path)
+	if strings.Contains(cleanPath, "/phase5/items.json") {
+		for _, item := range records(value) {
+			for _, rawProperty := range asArray(item["properties"]) {
+				property, ok := rawProperty.(map[string]any)
+				if !ok {
+					continue
+				}
+				for _, rawEffect := range asArray(property["effects"]) {
+					effect, ok := rawEffect.(map[string]any)
+					if !ok {
+						continue
+					}
+					if skillID, ok := effect["skillId"].(string); ok && skillID != "" {
+						if _, exists := seenIDs[skillID]; !exists {
+							return fmt.Errorf("%s: phase5 property %q references unknown skill %q", path, property["id"], skillID)
 						}
 					}
 				}
