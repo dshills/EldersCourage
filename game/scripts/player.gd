@@ -86,12 +86,12 @@ func _handle_actions() -> void:
 		_bell_of_the_dead()
 
 func _grave_strike() -> void:
-	attack_timer = ATTACK_COOLDOWN
+	attack_timer = _scaled_cooldown(ATTACK_COOLDOWN)
 	var target := _nearest_enemy_in_range(ATTACK_RANGE, 0.75)
 	if target == null:
 		return
-	var damage := ATTACK_DAMAGE + _stat_total("base_damage")
-	if randf() < 0.05:
+	var damage := ATTACK_DAMAGE + _stat_total("attack_damage")
+	if randf() < _critical_chance():
 		damage = int(roundi(float(damage) * 1.5))
 	target.take_damage(damage)
 	current_will = mini(max_will, current_will + 5)
@@ -99,14 +99,14 @@ func _grave_strike() -> void:
 	basic_attack_hit.emit(target, damage, target.global_position)
 
 func _blood_cleave() -> void:
-	cleave_timer = CLEAVE_COOLDOWN
+	cleave_timer = _scaled_cooldown(CLEAVE_COOLDOWN)
 	current_will -= CLEAVE_WILL_COST
 	for target in enemies:
 		if not is_instance_valid(target) or not target.alive:
 			continue
 		var to_target: Vector2 = target.global_position - global_position
 		if to_target.length() <= CLEAVE_RANGE and facing.normalized().dot(to_target.normalized()) > 0.25:
-			target.take_damage(CLEAVE_DAMAGE + _stat_total("base_damage"))
+			target.take_damage(CLEAVE_DAMAGE + _stat_total("attack_damage"))
 			target.apply_status("bleed", 3.0, 4.0)
 			damage_dealt.emit(CLEAVE_DAMAGE, target.global_position + Vector2(0, -48), Color(0.95, 0.18, 0.16))
 
@@ -279,18 +279,34 @@ func _stat_total(stat_name: String) -> int:
 		if item.is_empty():
 			continue
 		for stat in item.get("visibleStats", []):
-			if str(stat.get("stat", "")) == stat_name:
+			if _canonical_stat_name(str(stat.get("stat", ""))) == stat_name:
 				total += int(stat.get("value", 0))
 		for stat in item.get("revealedHiddenStats", []):
-			if str(stat.get("stat", "")) == stat_name:
+			if _canonical_stat_name(str(stat.get("stat", ""))) == stat_name:
 				total += int(stat.get("value", 0))
 		if item.get("curseRevealed", false):
 			var curse = item.get("curse", null)
 			if curse != null:
 				for effect in curse.get("effects", []):
-					if str(effect.get("stat", "")) == stat_name:
+					if _canonical_stat_name(str(effect.get("stat", ""))) == stat_name:
 						total += int(effect.get("value", 0))
 	return total
+
+func _canonical_stat_name(stat_name: String) -> String:
+	match stat_name:
+		"base_damage":
+			return "attack_damage"
+		"critical_chance_percent":
+			return "critical_chance"
+		_:
+			return stat_name
+
+func _critical_chance() -> float:
+	return clampf(0.05 + (float(_stat_total("critical_chance")) / 100.0), 0.0, 0.95)
+
+func _scaled_cooldown(base_cooldown: float) -> float:
+	var speed_bonus := float(_stat_total("attack_speed")) / 100.0
+	return maxf(0.12, base_cooldown / maxf(0.20, 1.0 + speed_bonus))
 
 func award_attunement_xp(amount: int) -> Array[String]:
 	var messages: Array[String] = []

@@ -696,11 +696,15 @@ func validString(value string, allowed []string) bool {
 func validStatNames() []string {
 	return []string{
 		"armor",
+		"attack_damage",
+		"attack_speed",
 		"base_damage",
 		"bell_damage_percent",
 		"cold_resistance",
 		"cooldown_recovery_percent",
+		"critical_chance",
 		"critical_chance_percent",
+		"echo_power",
 		"fire_damage_percent",
 		"fire_resistance",
 		"max_health",
