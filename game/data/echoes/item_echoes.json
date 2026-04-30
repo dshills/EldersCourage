@@ -1,0 +1,51 @@
+[
+  {
+    "id": "echo_spectral_ember",
+    "name": "Spectral Ember",
+    "trigger": "enemy_killed",
+    "effect": {
+      "type": "damage_orb",
+      "damageType": "fire",
+      "durationSeconds": 4,
+      "damagePerSecond": 5
+    }
+  },
+  {
+    "id": "echo_blood_refund",
+    "name": "Blood Refund",
+    "trigger": "enemy_killed",
+    "effect": {
+      "type": "restore_will",
+      "amount": 8
+    }
+  },
+  {
+    "id": "echo_frost_grave",
+    "name": "Frost Grave",
+    "trigger": "enemy_killed",
+    "effect": {
+      "type": "chill_nearby",
+      "durationSeconds": 3,
+      "slowPercent": 30
+    }
+  },
+  {
+    "id": "echo_decay_bloom",
+    "name": "Decay Bloom",
+    "trigger": "enemy_killed",
+    "effect": {
+      "type": "vulnerable_nearby",
+      "durationSeconds": 4,
+      "damageTakenPercent": 20
+    }
+  },
+  {
+    "id": "echo_burial_toll",
+    "name": "Burial Toll",
+    "trigger": "enemy_killed",
+    "effect": {
+      "type": "bell_pulse",
+      "damage": 16
+    }
+  }
+]

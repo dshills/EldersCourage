@@ -1,0 +1,16 @@
+; Engine configuration file.
+; Open with Godot 4.x.
+
+config_version=5
+
+[application]
+
+config/name="EldersCourage Prototype"
+run/main_scene="res://scenes/combat_arena.tscn"
+config/features=PackedStringArray("4.0")
+config/icon=""
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720

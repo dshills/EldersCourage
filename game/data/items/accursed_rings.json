@@ -1,0 +1,97 @@
+[
+  {
+    "id": "ring_veyra_mourning_band",
+    "name": "Veyra's Mourning Band",
+    "type": "ring",
+    "rarity": "accursed",
+    "description": "A blackened band that smells faintly of extinguished pyres.",
+    "soul": {
+      "name": "Veyra",
+      "school": "ash",
+      "temperament": "vengeful",
+      "whispers": ["They burned me first.", "Ash remembers the hand that scattered it."]
+    },
+    "visibleStats": [{ "stat": "fire_damage_percent", "value": 12 }],
+    "hiddenStats": [{ "attunementLevel": 2, "stat": "cooldown_recovery_percent", "value": 5 }],
+    "curse": { "id": "curse_cold_vulnerability", "revealAttunementLevel": 3, "description": "Cold damage taken is increased." },
+    "echoes": [{ "id": "echo_spectral_ember", "unlockAttunementLevel": 4 }],
+    "attunement": { "enabled": true, "xp": 0, "level": 0, "maxLevel": 5 },
+    "synergyTags": ["ash", "ring", "vengeful_soul"]
+  },
+  {
+    "id": "ring_orren_blood_debt",
+    "name": "Orren's Blood Debt",
+    "type": "ring",
+    "rarity": "accursed",
+    "description": "A red-stained signet that tightens when blood is spilled.",
+    "soul": {
+      "name": "Orren",
+      "school": "blood",
+      "temperament": "bargaining",
+      "whispers": ["A debt paid in blood is still a debt.", "Spend yourself wisely."]
+    },
+    "visibleStats": [{ "stat": "base_damage", "value": 3 }],
+    "hiddenStats": [{ "attunementLevel": 2, "stat": "max_health", "value": 12 }],
+    "curse": { "id": "curse_blood_tithe", "revealAttunementLevel": 3, "description": "Skills occasionally cost health." },
+    "echoes": [{ "id": "echo_blood_refund", "unlockAttunementLevel": 4 }],
+    "attunement": { "enabled": true, "xp": 0, "level": 0, "maxLevel": 5 },
+    "synergyTags": ["blood", "ring", "bargaining_soul"]
+  },
+  {
+    "id": "ring_maelis_cold_vow",
+    "name": "Maelis' Cold Vow",
+    "type": "ring",
+    "rarity": "accursed",
+    "description": "A pale ring rimed with frost that never melts.",
+    "soul": {
+      "name": "Maelis",
+      "school": "frost",
+      "temperament": "patient",
+      "whispers": ["Stillness is a weapon.", "Let them come slowly."]
+    },
+    "visibleStats": [{ "stat": "max_will", "value": 8 }],
+    "hiddenStats": [{ "attunementLevel": 2, "stat": "cold_resistance", "value": 12 }],
+    "curse": { "id": "curse_slow_blood", "revealAttunementLevel": 3, "description": "Will generation is slightly reduced." },
+    "echoes": [{ "id": "echo_frost_grave", "unlockAttunementLevel": 4 }],
+    "attunement": { "enabled": true, "xp": 0, "level": 0, "maxLevel": 5 },
+    "synergyTags": ["frost", "ring", "patient_soul"]
+  },
+  {
+    "id": "ring_thorn_of_nara",
+    "name": "Thorn of Nara",
+    "type": "ring",
+    "rarity": "accursed",
+    "description": "A thorny loop of green-black metal that pricks the wearer.",
+    "soul": {
+      "name": "Nara",
+      "school": "rot",
+      "temperament": "resentful",
+      "whispers": ["Everything noble feeds the soil.", "Let their strength spoil."]
+    },
+    "visibleStats": [{ "stat": "critical_chance_percent", "value": 4 }],
+    "hiddenStats": [{ "attunementLevel": 2, "stat": "base_damage", "value": 2 }],
+    "curse": { "id": "curse_rot_sickness", "revealAttunementLevel": 3, "description": "Healing is less effective." },
+    "echoes": [{ "id": "echo_decay_bloom", "unlockAttunementLevel": 4 }],
+    "attunement": { "enabled": true, "xp": 0, "level": 0, "maxLevel": 5 },
+    "synergyTags": ["rot", "ring", "resentful_soul"]
+  },
+  {
+    "id": "ring_bellringers_oath",
+    "name": "Bell-Ringer's Oath",
+    "type": "ring",
+    "rarity": "accursed",
+    "description": "A bone-white ring that hums after every death.",
+    "soul": {
+      "name": "The Bell-Ringer",
+      "school": "bone",
+      "temperament": "judging",
+      "whispers": ["All oaths are heard below.", "Ring once for the buried."]
+    },
+    "visibleStats": [{ "stat": "max_will", "value": 12 }],
+    "hiddenStats": [{ "attunementLevel": 2, "stat": "bell_damage_percent", "value": 10 }],
+    "curse": { "id": "curse_echo_hunger", "revealAttunementLevel": 3, "description": "Enemies sometimes echo your violence." },
+    "echoes": [{ "id": "echo_burial_toll", "unlockAttunementLevel": 4 }],
+    "attunement": { "enabled": true, "xp": 0, "level": 0, "maxLevel": 5 },
+    "synergyTags": ["bone", "echo", "ring", "judging_soul"]
+  }
+]

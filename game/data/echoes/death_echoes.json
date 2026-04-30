@@ -1,0 +1,14 @@
+[
+  {
+    "id": "death_echo_last_breath",
+    "name": "Echo of Your Last Breath",
+    "effectsUntilReclaimed": [
+      { "target": "enemies_in_room", "stat": "damage_percent", "value": 10 },
+      { "target": "enemies_in_room", "stat": "movement_speed_percent", "value": 5 }
+    ],
+    "reclaimReward": {
+      "attunementXpMultiplier": 1.25,
+      "durationSeconds": 120
+    }
+  }
+]

@@ -1,0 +1,18 @@
+{
+  "id": "dungeon_ashen_catacombs",
+  "name": "The Ashen Catacombs",
+  "rooms": [
+    { "id": "entrance", "type": "entrance" },
+    { "id": "combat_1", "type": "combat", "encounter": ["bone_thrall", "bone_thrall"] },
+    { "id": "combat_2", "type": "combat", "encounter": ["bone_thrall", "ash_witch"] },
+    { "id": "combat_3", "type": "combat", "encounter": ["ash_witch", "hollowed_brute"] },
+    {
+      "id": "elite_1",
+      "type": "elite",
+      "encounter": ["bone_thrall", "ash_witch", "hollowed_brute"],
+      "modifiers": ["burning", "vampiric", "echoing"]
+    },
+    { "id": "treasure_1", "type": "treasure" },
+    { "id": "boss", "type": "boss", "encounter": ["bell_ringer_below"] }
+  ]
+}

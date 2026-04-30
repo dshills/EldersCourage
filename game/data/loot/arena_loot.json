@@ -1,0 +1,20 @@
+{
+  "id": "loot_arena_phase_3",
+  "drops": [
+    "weapon_rusted_oathblade",
+    "weapon_grave_iron_cleaver",
+    "weapon_ashmarked_sabre",
+    "weapon_bonehook",
+    "armor_torn_mail",
+    "armor_gravebound_plate",
+    "armor_ash_wardens_coat",
+    "ring_plain_grave_band",
+    "ring_bloodied_signet",
+    "ring_cold_oath_loop",
+    "ring_veyra_mourning_band",
+    "ring_orren_blood_debt",
+    "ring_maelis_cold_vow",
+    "ring_thorn_of_nara",
+    "ring_bellringers_oath"
+  ]
+}
