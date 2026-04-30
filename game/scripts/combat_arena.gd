@@ -13,6 +13,8 @@ const DeathEchoScene := preload("res://scripts/death_echo.gd")
 const BurningGroundScene := preload("res://scripts/burning_ground.gd")
 const ExitPortalScene := preload("res://scripts/exit_portal.gd")
 const BossBellRingerScene := preload("res://scripts/boss_bell_ringer.gd")
+const HitSparkScene := preload("res://scenes/vfx/HitSpark.tscn")
+const AttunementPulseScene := preload("res://scenes/vfx/AttunementPulse.tscn")
 const EldersTheme := preload("res://assets/ui/theme/elders_theme.tres")
 const FloorTexture := preload("res://assets/tiles/ashen_catacombs_floor.png")
 const WallTexture := preload("res://assets/tiles/ashen_catacombs_wall.png")
@@ -486,6 +488,10 @@ func _show_damage(amount: int, at_position: Vector2, color: Color) -> void:
 	number.position = at_position
 	number.modulate = color
 	add_child(number)
+	var spark := HitSparkScene.instantiate()
+	spark.global_position = at_position + Vector2(0, 24)
+	spark.spark_color = color
+	add_child(spark)
 
 func _on_player_died() -> void:
 	_create_death_echo(player.global_position)
@@ -507,6 +513,7 @@ func _on_enemy_died(enemy: Node2D) -> void:
 	var echo_messages: Array[String] = _trigger_item_echoes(enemy_position)
 	if not reveal_messages.is_empty():
 		message.text = reveal_messages[0]
+		_spawn_attunement_pulse()
 	elif not echo_messages.is_empty():
 		message.text = echo_messages[0]
 	if _alive_enemy_count() == 0:
@@ -828,12 +835,20 @@ func _on_death_echo_reclaimed() -> void:
 	message.text = "Death Echo reclaimed. Attunement surges."
 	if not messages.is_empty():
 		message.text = messages[0]
+		_spawn_attunement_pulse()
 	_save_game()
 
 func _clear_haunted_modifiers() -> void:
 	for arena_enemy in enemies:
 		if is_instance_valid(arena_enemy) and arena_enemy.has_method("clear_haunted_modifier"):
 			arena_enemy.clear_haunted_modifier()
+
+func _spawn_attunement_pulse() -> void:
+	if not is_instance_valid(player):
+		return
+	var pulse := AttunementPulseScene.instantiate()
+	pulse.global_position = player.global_position
+	add_child(pulse)
 
 func _update_inventory_panel() -> void:
 	inventory_panel.visible = inventory_visible
