@@ -777,6 +777,8 @@ func _apply_last_duel(target: Node2D, amount: int, at_position: Vector2, definit
 	var effect_data: Dictionary = definition.get("effect", {})
 	var delay_seconds := float(effect_data.get("delaySeconds", 0.25))
 	var damage_multiplier := float(effect_data.get("damageMultiplier", 0.45))
+	if player.has_method("echo_power_multiplier"):
+		damage_multiplier *= player.echo_power_multiplier()
 	await get_tree().create_timer(delay_seconds).timeout
 	if not is_instance_valid(target) or not target.alive:
 		return

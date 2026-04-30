@@ -308,6 +308,9 @@ func _scaled_cooldown(base_cooldown: float) -> float:
 	var speed_bonus := float(_stat_total("attack_speed")) / 100.0
 	return maxf(0.12, base_cooldown / maxf(0.20, 1.0 + speed_bonus))
 
+func echo_power_multiplier() -> float:
+	return maxf(0.0, 1.0 + (float(_stat_total("echo_power")) / 100.0))
+
 func award_attunement_xp(amount: int) -> Array[String]:
 	var messages: Array[String] = []
 	for slot in equipped.keys():
