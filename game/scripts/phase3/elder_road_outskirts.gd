@@ -1,19 +1,16 @@
 extends Control
 
 const Phase3State := preload("res://scripts/phase3/phase3_state.gd")
-const TitlePlaqueTexture := preload("res://assets/ui/title_plaque.png")
-const AttackButtonTexture := preload("res://assets/ui/button_attack.png")
-const InventoryButtonTexture := preload("res://assets/ui/button_inventory.png")
-const QuestButtonTexture := preload("res://assets/ui/button_quests.png")
-const GrassTileTexture := preload("res://assets/terrain/grass_tile.png")
-const StoneTileTexture := preload("res://assets/terrain/stone_tile.png")
-const IceTileTexture := preload("res://assets/terrain/ice_tile.png")
-const LavaTileTexture := preload("res://assets/terrain/lava_tile.png")
-const ChestTexture := preload("res://assets/items/chest.png")
-const FireRuneTexture := preload("res://assets/items/fire_rune.png")
-const PlayerTexture := preload("res://assets/sprites/player/gravebound_knight.png")
-const ScoutTexture := preload("res://assets/portraits/elf_scout.png")
-const WarriorTexture := preload("res://assets/portraits/elder_warrior.png")
+const TITLE_PLAQUE_PATH := "res://assets/ui/title_plaque.png"
+const ATTACK_BUTTON_PATH := "res://assets/ui/button_attack.png"
+const INVENTORY_BUTTON_PATH := "res://assets/ui/button_inventory.png"
+const QUEST_BUTTON_PATH := "res://assets/ui/button_quests.png"
+const GRASS_TILE_PATH := "res://assets/terrain/grass_tile.png"
+const STONE_TILE_PATH := "res://assets/terrain/stone_tile.png"
+const ICE_TILE_PATH := "res://assets/terrain/ice_tile.png"
+const LAVA_TILE_PATH := "res://assets/terrain/lava_tile.png"
+const CHEST_PATH := "res://assets/items/chest.png"
+const FIRE_RUNE_PATH := "res://assets/items/fire_rune.png"
 
 var state
 var map_grid: GridContainer
@@ -36,6 +33,7 @@ var interact_button: Button
 var shrine_button: Button
 var attack_button: TextureButton
 var restart_button: Button
+var texture_cache := {}
 
 func _ready() -> void:
 	custom_minimum_size = Vector2(1120, 700)
@@ -105,7 +103,7 @@ func _build_header() -> Control:
 	header.custom_minimum_size = Vector2(0, 80)
 	header.add_theme_constant_override("separation", 14)
 	var logo := TextureRect.new()
-	logo.texture = TitlePlaqueTexture
+	logo.texture = _load_texture(TITLE_PLAQUE_PATH)
 	logo.custom_minimum_size = Vector2(260, 72)
 	logo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	header.add_child(logo)
@@ -186,19 +184,19 @@ func _build_action_bar() -> Control:
 	shrine_button = _text_button("Activate Shrine", "Activate a shrine on this tile")
 	shrine_button.pressed.connect(state.activate_current_shrine)
 	bar.add_child(shrine_button)
-	attack_button = _image_button(AttackButtonTexture, "Attack active enemy")
+	attack_button = _image_button(_load_texture(ATTACK_BUTTON_PATH), "Attack active enemy")
 	attack_button.pressed.connect(state.attack_enemy)
 	bar.add_child(attack_button)
 	skill_bar = HBoxContainer.new()
 	skill_bar.add_theme_constant_override("separation", 6)
 	bar.add_child(skill_bar)
-	var inventory_button := _image_button(InventoryButtonTexture, "Toggle inventory")
+	var inventory_button := _image_button(_load_texture(INVENTORY_BUTTON_PATH), "Toggle inventory")
 	inventory_button.pressed.connect(state.toggle_inventory)
 	bar.add_child(inventory_button)
 	var talent_button := _text_button("Talents", "Toggle talent panel")
 	talent_button.pressed.connect(state.toggle_talent_panel)
 	bar.add_child(talent_button)
-	var quest_button := _image_button(QuestButtonTexture, "Quest tracker")
+	var quest_button := _image_button(_load_texture(QUEST_BUTTON_PATH), "Quest tracker")
 	quest_button.pressed.connect(func() -> void: quest_box.grab_focus())
 	bar.add_child(quest_button)
 	restart_button = _text_button("Restart", "Restart Phase 3")
@@ -295,7 +293,7 @@ func _class_card(class_id: String) -> PanelContainer:
 	box.add_theme_constant_override("separation", 8)
 	card.add_child(box)
 	var portrait := TextureRect.new()
-	portrait.texture = load(str(class_definition.get("portrait", "")))
+	portrait.texture = _load_texture(str(class_definition.get("portrait", "")))
 	portrait.custom_minimum_size = Vector2(128, 128)
 	portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	box.add_child(portrait)
@@ -489,7 +487,7 @@ func _refresh_inventory() -> void:
 		if index < inventory.size():
 			var item: Dictionary = inventory[index]
 			var item_definition: Dictionary = state.item_definition(item)
-			slot.icon = load(state.display_icon(item))
+			slot.icon = _load_texture(state.display_icon(item))
 			slot.expand_icon = true
 			slot.text = "x%d" % int(item.get("quantity", 1))
 			slot.tooltip_text = state.display_name(item)
@@ -573,21 +571,21 @@ func _tile_position(tile: Dictionary) -> Vector2i:
 func _tile_texture(kind: String) -> Texture2D:
 	match kind:
 		"camp":
-			return GrassTileTexture
+			return _load_texture(GRASS_TILE_PATH)
 		"woods":
-			return GrassTileTexture
+			return _load_texture(GRASS_TILE_PATH)
 		"chest":
-			return ChestTexture
+			return _load_texture(CHEST_PATH)
 		"shrine":
-			return FireRuneTexture
+			return _load_texture(FIRE_RUNE_PATH)
 		"ruins":
-			return StoneTileTexture
+			return _load_texture(STONE_TILE_PATH)
 		"gate":
-			return IceTileTexture
+			return _load_texture(ICE_TILE_PATH)
 		"elder_stone":
-			return LavaTileTexture
+			return _load_texture(LAVA_TILE_PATH)
 		_:
-			return StoneTileTexture
+			return _load_texture(STONE_TILE_PATH)
 
 func _tile_style(tile: Dictionary) -> StyleBoxFlat:
 	var position := _tile_position(tile)
@@ -624,6 +622,18 @@ func _image_button(texture: Texture2D, tooltip: String) -> TextureButton:
 	button.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
 	button.tooltip_text = tooltip
 	return button
+
+func _load_texture(path: String) -> Texture2D:
+	if texture_cache.has(path):
+		return texture_cache[path]
+	var image := Image.new()
+	var error := image.load(path)
+	if error != OK:
+		image = Image.create(16, 16, false, Image.FORMAT_RGBA8)
+		image.fill(Color(0.45, 0.34, 0.18, 1.0))
+	var texture := ImageTexture.create_from_image(image)
+	texture_cache[path] = texture
+	return texture
 
 func _blank_spacer() -> Control:
 	var spacer := Control.new()
