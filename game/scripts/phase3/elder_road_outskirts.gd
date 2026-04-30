@@ -28,6 +28,10 @@ var enemy_health: ProgressBar
 var inventory_panel: PanelContainer
 var inventory_grid: GridContainer
 var item_details: RichTextLabel
+var class_panel: PanelContainer
+var talent_panel: PanelContainer
+var talent_box: VBoxContainer
+var skill_bar: HBoxContainer
 var interact_button: Button
 var shrine_button: Button
 var attack_button: TextureButton
@@ -57,6 +61,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		state.attack_enemy()
 	elif event.is_action_pressed("phase3_interact"):
 		_interact()
+	elif event.is_action_pressed("phase3_talents"):
+		state.toggle_talent_panel()
 
 func _build_screen() -> void:
 	var background := ColorRect.new()
@@ -88,6 +94,11 @@ func _build_screen() -> void:
 	inventory_panel = _build_inventory_panel()
 	inventory_panel.visible = false
 	add_child(inventory_panel)
+	talent_panel = _build_talent_panel()
+	talent_panel.visible = false
+	add_child(talent_panel)
+	class_panel = _build_class_panel()
+	add_child(class_panel)
 
 func _build_header() -> Control:
 	var header := HBoxContainer.new()
@@ -178,9 +189,15 @@ func _build_action_bar() -> Control:
 	attack_button = _image_button(AttackButtonTexture, "Attack active enemy")
 	attack_button.pressed.connect(state.attack_enemy)
 	bar.add_child(attack_button)
+	skill_bar = HBoxContainer.new()
+	skill_bar.add_theme_constant_override("separation", 6)
+	bar.add_child(skill_bar)
 	var inventory_button := _image_button(InventoryButtonTexture, "Toggle inventory")
 	inventory_button.pressed.connect(state.toggle_inventory)
 	bar.add_child(inventory_button)
+	var talent_button := _text_button("Talents", "Toggle talent panel")
+	talent_button.pressed.connect(state.toggle_talent_panel)
+	bar.add_child(talent_button)
 	var quest_button := _image_button(QuestButtonTexture, "Quest tracker")
 	quest_button.pressed.connect(func() -> void: quest_box.grab_focus())
 	bar.add_child(quest_button)
@@ -238,6 +255,73 @@ func _build_inventory_panel() -> PanelContainer:
 	details_box.add_child(use)
 	return panel
 
+func _build_talent_panel() -> PanelContainer:
+	var panel := PanelContainer.new()
+	panel.position = Vector2(890, 105)
+	panel.size = Vector2(360, 500)
+	panel.add_theme_stylebox_override("panel", _stylebox(Color(0.06, 0.05, 0.04, 0.98), Color(0.68, 0.52, 0.24), 3, 8))
+	talent_box = VBoxContainer.new()
+	talent_box.add_theme_constant_override("separation", 8)
+	panel.add_child(talent_box)
+	return panel
+
+func _build_class_panel() -> PanelContainer:
+	var panel := PanelContainer.new()
+	panel.position = Vector2(160, 90)
+	panel.size = Vector2(960, 540)
+	panel.add_theme_stylebox_override("panel", _stylebox(Color(0.055, 0.045, 0.035, 0.98), Color(0.76, 0.58, 0.28), 4, 8))
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 14)
+	panel.add_child(box)
+	var title := _gold_label("Choose Your Class")
+	title.add_theme_font_size_override("font_size", 34)
+	box.add_child(title)
+	var cards := HBoxContainer.new()
+	cards.add_theme_constant_override("separation", 12)
+	box.add_child(cards)
+	for class_id in ["roadwarden", "ember_sage", "gravebound_scout"]:
+		cards.add_child(_class_card(class_id))
+	return panel
+
+func _class_card(class_id: String) -> PanelContainer:
+	var class_definition: Dictionary = state.classes_by_id.get(class_id, {})
+	var card := PanelContainer.new()
+	card.custom_minimum_size = Vector2(300, 400)
+	card.add_theme_stylebox_override("panel", _stylebox(Color(0.13, 0.10, 0.07), Color(0.55, 0.40, 0.20), 2, 8))
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 8)
+	card.add_child(box)
+	var portrait := TextureRect.new()
+	portrait.texture = load(str(class_definition.get("portrait", "")))
+	portrait.custom_minimum_size = Vector2(128, 128)
+	portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	box.add_child(portrait)
+	var name := _gold_label(str(class_definition.get("name", class_id)))
+	name.add_theme_font_size_override("font_size", 22)
+	box.add_child(name)
+	var subtitle := _gold_label(str(class_definition.get("subtitle", "")))
+	subtitle.add_theme_font_size_override("font_size", 15)
+	box.add_child(subtitle)
+	var description := _gold_label(str(class_definition.get("description", "")))
+	description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	description.add_theme_font_size_override("font_size", 13)
+	box.add_child(description)
+	var stats: Dictionary = class_definition.get("baseStats", {})
+	var preview := _gold_label("STR %d  DEF %d  SPELL %d\nHP %d  Mana %d\nSkills: %s" % [
+		int(stats.get("strength", 0)),
+		int(stats.get("defense", 0)),
+		int(stats.get("spellPower", 0)),
+		int(class_definition.get("startingHealth", 0)),
+		int(class_definition.get("startingMana", 0)),
+		", ".join(_skill_names(class_definition.get("startingSkillIds", []))),
+	])
+	preview.add_theme_font_size_override("font_size", 13)
+	box.add_child(preview)
+	var begin := _text_button("Begin Journey", "Start as %s" % class_definition.get("name", class_id))
+	begin.pressed.connect(func() -> void: state.start_class(class_id))
+	box.add_child(begin)
+	return card
+
 func _refresh() -> void:
 	if map_grid == null:
 		return
@@ -248,16 +332,21 @@ func _refresh() -> void:
 	_refresh_enemy()
 	_refresh_messages()
 	_refresh_inventory()
+	_refresh_skills()
+	_refresh_talents()
 	_refresh_actions()
+	class_panel.visible = not state.class_selected
 
 func _refresh_header() -> void:
 	var position: Dictionary = state.player.get("position", {})
 	var tile: Dictionary = state.current_tile()
-	header_label.text = "%s | Level %d | XP %d/%d | Gold %d | Position %d,%d | %s" % [
+	header_label.text = "%s | %s | Level %d | XP %d/%d | Talent Pts %d | Gold %d | Position %d,%d | %s" % [
 		state.zone.get("name", "Elder Road"),
+		state.current_class().get("name", "Choose Class"),
 		int(state.player.get("level", 1)),
 		int(state.player.get("xp", 0)),
 		int(state.player.get("xpToNextLevel", 50)),
+		int(state.player.get("talents", {}).get("availablePoints", 0)),
 		int(state.player.get("gold", 0)),
 		int(position.get("x", 0)),
 		int(position.get("y", 0)),
@@ -306,6 +395,44 @@ func _refresh_stats() -> void:
 		_equipped_name(equipment.get("armor", {})),
 		_equipped_name(equipment.get("trinket", {})),
 	]
+
+func _refresh_skills() -> void:
+	for child in skill_bar.get_children():
+		child.queue_free()
+	for skill_id in state.player.get("skills", {}).get("knownSkillIds", []):
+		var skill: Dictionary = state.skills_by_id.get(str(skill_id), {})
+		if skill.is_empty():
+			continue
+		var cooldown: int = int(state.player.get("skills", {}).get("cooldowns", {}).get(str(skill_id), 0))
+		var cost: int = state.effective_skill_cost(skill)
+		var button := _text_button("%s\n%dM%s" % [skill.get("name", skill_id), cost, " CD:%d" % cooldown if cooldown > 0 else ""], str(skill.get("description", "")))
+		button.custom_minimum_size = Vector2(130, 54)
+		button.disabled = cooldown > 0 or (str(skill.get("resource", "")) == "mana" and int(state.player.get("mana", 0)) < cost)
+		button.pressed.connect(func(id := str(skill_id)) -> void: state.use_skill(id))
+		skill_bar.add_child(button)
+
+func _refresh_talents() -> void:
+	talent_panel.visible = state.talent_panel_visible
+	for child in talent_box.get_children():
+		child.queue_free()
+	var tree: Dictionary = state.current_talent_tree()
+	var title := _gold_label("%s  Points: %d" % [tree.get("name", "Talents"), int(state.player.get("talents", {}).get("availablePoints", 0))])
+	title.add_theme_font_size_override("font_size", 22)
+	talent_box.add_child(title)
+	var ranks: Dictionary = state.player.get("talents", {}).get("ranks", {})
+	for talent in tree.get("nodes", []):
+		var rank := int(ranks.get(str(talent.get("id", "")), 0))
+		var button := _text_button("%s %d/%d\nLvl %d - %s" % [
+			talent.get("name", "Talent"),
+			rank,
+			int(talent.get("maxRank", 1)),
+			int(talent.get("requiredLevel", 1)),
+			talent.get("description", ""),
+		], "Spend talent point")
+		button.custom_minimum_size = Vector2(320, 64)
+		button.disabled = not state.can_spend_talent(talent)
+		button.pressed.connect(func(id := str(talent.get("id", ""))) -> void: state.spend_talent_point(id))
+		talent_box.add_child(button)
 
 func _refresh_quest() -> void:
 	for child in quest_box.get_children():
@@ -378,9 +505,9 @@ func _refresh_inventory() -> void:
 
 func _refresh_actions() -> void:
 	var tile: Dictionary = state.current_tile()
-	interact_button.disabled = not tile.has("containerId")
-	shrine_button.disabled = not tile.has("shrineId")
-	attack_button.disabled = state.defeated
+	interact_button.disabled = not state.class_selected or not tile.has("containerId")
+	shrine_button.disabled = not state.class_selected or not tile.has("shrineId")
+	attack_button.disabled = state.defeated or not state.class_selected
 	restart_button.visible = state.defeated or bool(state.zone.get("completed", false))
 
 func _interact() -> void:
@@ -529,6 +656,12 @@ func _stats_text(stats) -> String:
 		parts.append("%s %+d" % [str(key), int(stats[key])])
 	return "\n\nStats: %s" % ", ".join(parts)
 
+func _skill_names(skill_ids: Array) -> Array[String]:
+	var names: Array[String] = []
+	for skill_id in skill_ids:
+		names.append(str(state.skills_by_id.get(str(skill_id), {}).get("name", skill_id)))
+	return names
+
 func _message_color(type: String) -> Color:
 	match type:
 		"success":
@@ -550,6 +683,7 @@ func _ensure_inputs() -> void:
 	_add_key_action("phase3_inventory", KEY_I)
 	_add_key_action("phase3_attack", KEY_SPACE)
 	_add_key_action("phase3_interact", KEY_E)
+	_add_key_action("phase3_talents", KEY_Y)
 	_add_key_action("phase3_move_north", KEY_UP)
 	_add_key_action("phase3_move_south", KEY_DOWN)
 	_add_key_action("phase3_move_west", KEY_LEFT)

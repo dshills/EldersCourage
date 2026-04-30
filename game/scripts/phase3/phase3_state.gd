@@ -9,23 +9,76 @@ var enemies_by_id := {}
 var loot_tables_by_id := {}
 var containers_by_id := {}
 var shrines_by_id := {}
+var classes_by_id := {}
+var skills_by_id := {}
+var talent_trees_by_id := {}
 var zone := {}
 var quest_chain := {}
 var player := {}
 var messages: Array[Dictionary] = []
 var active_enemy := {}
 var selected_item_id := ""
+var selected_skill_id := ""
 var inventory_visible := false
+var talent_panel_visible := false
 var completed_encounters := {}
 var completion_reward_claimed := false
 var defeated := false
+var class_selected := false
+var selected_class_id := ""
+var temporary_modifiers: Array[Dictionary] = []
 
 func reset() -> void:
 	items_by_id = _load_records_by_id("res://data/phase3/items.json")
+	var starter_items := _load_records_by_id("res://data/phase4/starter_items.json")
+	for item_id in starter_items.keys():
+		items_by_id[item_id] = starter_items[item_id]
 	enemies_by_id = _load_records_by_id("res://data/phase3/enemies.json")
 	loot_tables_by_id = _load_records_by_id("res://data/phase3/loot_tables.json")
 	containers_by_id = _load_records_by_id("res://data/phase3/containers.json")
 	shrines_by_id = _load_records_by_id("res://data/phase3/shrines.json")
+	classes_by_id = _load_records_by_id("res://data/phase4/classes.json")
+	skills_by_id = _load_records_by_id("res://data/phase4/skills.json")
+	talent_trees_by_id = _load_records_by_id("res://data/phase4/talents.json")
+	_reset_world()
+	class_selected = false
+	selected_class_id = ""
+	player["classId"] = ""
+	messages.clear()
+	add_message("Choose a class to begin the Elder Road.", "info")
+
+func start_class(class_id: String) -> void:
+	if not classes_by_id.has(class_id):
+		add_message("Unknown class.", "warning")
+		return
+	_reset_world()
+	var class_definition: Dictionary = classes_by_id[class_id]
+	class_selected = true
+	selected_class_id = class_id
+	player["classId"] = class_id
+	player["name"] = class_definition.get("name", "The Wanderer")
+	player["level"] = 1
+	player["xp"] = 0
+	player["xpToNextLevel"] = 50
+	player["maxHealth"] = int(class_definition.get("startingHealth", 100))
+	player["maxMana"] = int(class_definition.get("startingMana", 40))
+	player["health"] = int(player["maxHealth"])
+	player["mana"] = int(player["maxMana"])
+	player["gold"] = int(class_definition.get("startingGold", 0))
+	player["baseStats"] = class_definition.get("baseStats", {}).duplicate(true)
+	player["skills"] = { "knownSkillIds": class_definition.get("startingSkillIds", []).duplicate(true), "cooldowns": {} }
+	player["talents"] = { "availablePoints": 0, "spentPoints": 0, "ranks": {} }
+	player["talentTreeId"] = str(class_definition.get("talentTreeId", ""))
+	for item_id in class_definition.get("startingItemIds", []):
+		_grant_starting_item(str(item_id))
+	player["health"] = effective_max_health()
+	player["mana"] = effective_max_mana()
+	messages.clear()
+	add_message(str(class_definition.get("startMessage", "Your journey begins.")), "success")
+	add_message("Elder Road Outskirts opens before you.", "info")
+	state_changed.emit()
+
+func _reset_world() -> void:
 	zone = _load_record("res://data/phase3/zone_elder_road_outskirts.json")
 	quest_chain = _load_record("res://data/phase3/quest_chain.json")
 	player = {
@@ -41,19 +94,26 @@ func reset() -> void:
 		"baseStats": { "strength": 1, "defense": 1, "spellPower": 0, "maxHealthBonus": 0, "maxManaBonus": 0 },
 		"inventory": [],
 		"equipment": { "weapon": {}, "armor": {}, "trinket": {} },
+		"skills": { "knownSkillIds": [], "cooldowns": {} },
+		"talents": { "availablePoints": 0, "spentPoints": 0, "ranks": {} },
+		"talentTreeId": "",
 		"position": _position_from_array(zone.get("startPosition", [0, 0])),
 	}
 	active_enemy = {}
 	selected_item_id = ""
+	selected_skill_id = ""
 	inventory_visible = false
+	talent_panel_visible = false
 	completed_encounters = {}
 	completion_reward_claimed = false
 	defeated = false
-	messages.clear()
+	temporary_modifiers = []
 	_mark_current_tile_visited()
-	add_message("Elder Road Outskirts opens before you.", "info")
 
 func move_player(direction: String) -> void:
+	if not class_selected:
+		add_message("Choose a class first.", "warning")
+		return
 	if defeated:
 		add_message("You cannot move while defeated.", "warning")
 		return
@@ -150,6 +210,9 @@ func start_encounter(enemy_id: String) -> void:
 	state_changed.emit()
 
 func attack_enemy() -> void:
+	if not class_selected:
+		add_message("Choose a class first.", "warning")
+		return
 	if defeated:
 		add_message("You need to restart before fighting again.", "warning")
 		return
@@ -169,12 +232,67 @@ func attack_enemy() -> void:
 	if int(active_enemy.get("health", 0)) <= 0:
 		_defeat_active_enemy()
 	else:
-		var retaliation := enemy_damage(active_enemy)
-		player["health"] = maxi(0, int(player["health"]) - retaliation)
-		add_message("%s hits you for %d damage." % [active_enemy.get("name", "The enemy"), retaliation], "combat")
-		if int(player["health"]) <= 0:
-			defeated = true
-			add_message("You are defeated. Restart to try again.", "warning")
+		_enemy_retaliates()
+	_advance_turn()
+	state_changed.emit()
+
+func use_skill(skill_id: String) -> void:
+	if defeated:
+		add_message("You need to restart before fighting again.", "warning")
+		return
+	var skill: Dictionary = skills_by_id.get(skill_id, {})
+	if skill.is_empty() or not player.get("skills", {}).get("knownSkillIds", []).has(skill_id):
+		add_message("You do not know that skill.", "warning")
+		return
+	if str(skill.get("targetType", "")) == "enemy" and active_enemy.is_empty():
+		var tile := current_tile()
+		if tile.has("encounterId"):
+			start_encounter(str(tile["encounterId"]))
+		if active_enemy.is_empty():
+			add_message("%s needs an enemy target." % skill.get("name", "That skill"), "warning")
+			return
+	var cooldowns: Dictionary = player.get("skills", {}).get("cooldowns", {})
+	if int(cooldowns.get(skill_id, 0)) > 0:
+		add_message("%s is on cooldown." % skill.get("name", "That skill"), "warning")
+		return
+	var cost := effective_skill_cost(skill)
+	if str(skill.get("resource", "none")) == "mana" and int(player.get("mana", 0)) < cost:
+		add_message("Not enough mana for %s." % skill.get("name", "that skill"), "warning")
+		return
+	if str(skill.get("resource", "none")) == "mana":
+		player["mana"] = int(player["mana"]) - cost
+	var damage_total := 0
+	var healing_total := 0
+	var mana_total := 0
+	for raw_effect in skill.get("effects", []):
+		var effect: Dictionary = raw_effect
+		var amount := skill_effect_amount(skill, effect)
+		match str(effect.get("type", "")):
+			"damage":
+				var defense := 0 if bool(skill.get("ignoreDefense", false)) else maxi(0, int(active_enemy.get("defense", 0)) - int(skill.get("defensePierce", 0)))
+				var damage := maxi(1, amount - defense)
+				active_enemy["health"] = maxi(0, int(active_enemy.get("health", 0)) - damage)
+				damage_total += damage
+			"heal":
+				player["health"] = mini(effective_max_health(), int(player["health"]) + amount)
+				healing_total += amount
+			"restore_mana":
+				player["mana"] = mini(effective_max_mana(), int(player["mana"]) + amount)
+				mana_total += amount
+			"buff":
+				temporary_modifiers.append({ "sourceSkillId": skill_id, "target": "player", "stat": str(effect.get("stat", "")), "amount": int(effect.get("amount", 0)), "remainingTurns": int(effect.get("durationTurns", 1)) })
+			"debuff":
+				temporary_modifiers.append({ "sourceSkillId": skill_id, "target": "enemy", "stat": str(effect.get("stat", "")), "amount": int(effect.get("amount", 0)), "remainingTurns": int(effect.get("durationTurns", 1)) })
+	var message := str(skill.get("messageTemplate", "%s used." % skill.get("name", "Skill")))
+	message = message.replace("{damage}", str(damage_total)).replace("{healing}", str(healing_total)).replace("{amount}", str(mana_total))
+	add_message(message, "combat")
+	cooldowns[skill_id] = effective_skill_cooldown(skill)
+	player["skills"]["cooldowns"] = cooldowns
+	if not active_enemy.is_empty() and int(active_enemy.get("health", 0)) <= 0:
+		_defeat_active_enemy()
+	elif not active_enemy.is_empty() and not bool(active_enemy.get("defeated", false)):
+		_enemy_retaliates()
+	_advance_turn()
 	state_changed.emit()
 
 func equip_item(item_id: String) -> void:
@@ -224,8 +342,18 @@ func toggle_inventory() -> void:
 	inventory_visible = not inventory_visible
 	state_changed.emit()
 
+func toggle_talent_panel() -> void:
+	talent_panel_visible = not talent_panel_visible
+	state_changed.emit()
+
 func restart_game() -> void:
 	reset()
+
+func restart_same_class() -> void:
+	var class_id := selected_class_id
+	reset()
+	if class_id != "":
+		start_class(class_id)
 
 func grant_loot(loot_table_id: String) -> void:
 	var table: Dictionary = loot_tables_by_id.get(loot_table_id, {})
@@ -301,24 +429,111 @@ func equipment_stats() -> Dictionary:
 			result[stat] = int(result[stat]) + int(item.get("stats", {}).get(stat, 0))
 	return result
 
+func talent_stats() -> Dictionary:
+	var result := { "strength": 0, "defense": 0, "spellPower": 0, "maxHealthBonus": 0, "maxManaBonus": 0 }
+	var ranks: Dictionary = player.get("talents", {}).get("ranks", {})
+	for talent in current_talent_tree().get("nodes", []):
+		var rank := int(ranks.get(str(talent.get("id", "")), 0))
+		for effect in talent.get("effects", []):
+			if str(effect.get("type", "")) == "stat_bonus":
+				var stat := str(effect.get("stat", ""))
+				if result.has(stat):
+					result[stat] = int(result[stat]) + int(effect.get("amount", 0)) * rank
+	return result
+
 func effective_stats() -> Dictionary:
 	var result: Dictionary = player.get("baseStats", {}).duplicate(true)
 	var equipment := equipment_stats()
 	for stat in equipment.keys():
 		result[stat] = int(result.get(stat, 0)) + int(equipment[stat])
+	var talents := talent_stats()
+	for stat in talents.keys():
+		result[stat] = int(result.get(stat, 0)) + int(talents[stat])
 	return result
 
 func effective_max_health() -> int:
-	return int(player["maxHealth"]) + int(equipment_stats().get("maxHealthBonus", 0))
+	return int(player["maxHealth"]) + int(equipment_stats().get("maxHealthBonus", 0)) + int(talent_stats().get("maxHealthBonus", 0))
 
 func effective_max_mana() -> int:
-	return int(player["maxMana"]) + int(equipment_stats().get("maxManaBonus", 0))
+	return int(player["maxMana"]) + int(equipment_stats().get("maxManaBonus", 0)) + int(talent_stats().get("maxManaBonus", 0))
 
 func player_damage(enemy: Dictionary) -> int:
 	return maxi(1, 8 + int(effective_stats().get("strength", 0)) - int(enemy.get("defense", 0)))
 
 func enemy_damage(enemy: Dictionary) -> int:
-	return maxi(1, int(enemy.get("attack", 0)) - int(effective_stats().get("defense", 0)))
+	var attack := int(enemy.get("attack", 0))
+	var defense := int(effective_stats().get("defense", 0))
+	for modifier in temporary_modifiers:
+		if str(modifier.get("target", "")) == "enemy" and str(modifier.get("stat", "")) == "attack":
+			attack += int(modifier.get("amount", 0))
+		elif str(modifier.get("target", "")) == "player" and str(modifier.get("stat", "")) == "defense":
+			defense += int(modifier.get("amount", 0))
+	return maxi(1, attack - defense)
+
+func current_class() -> Dictionary:
+	return classes_by_id.get(selected_class_id, {})
+
+func current_talent_tree() -> Dictionary:
+	return talent_trees_by_id.get(str(player.get("talentTreeId", "")), {})
+
+func skill_effect_amount(skill: Dictionary, effect: Dictionary) -> int:
+	var amount := int(effect.get("amount", 0))
+	var stats := effective_stats()
+	var scaling_stat := str(effect.get("scalingStat", ""))
+	if scaling_stat != "":
+		amount += int(roundi(float(stats.get(scaling_stat, 0)) * float(effect.get("scalingMultiplier", 0.0))))
+	if str(effect.get("type", "")) == "damage":
+		amount += talent_skill_amount(str(skill.get("id", "")), "skill_damage_bonus")
+	return maxi(1, amount) if str(effect.get("type", "")) == "damage" else amount
+
+func effective_skill_cost(skill: Dictionary) -> int:
+	return maxi(0, int(skill.get("resourceCost", 0)) - talent_skill_amount(str(skill.get("id", "")), "resource_cost_reduction"))
+
+func effective_skill_cooldown(skill: Dictionary) -> int:
+	return maxi(0, int(skill.get("cooldownTurns", 0)) - talent_skill_amount(str(skill.get("id", "")), "cooldown_reduction"))
+
+func talent_skill_amount(skill_id: String, effect_type: String) -> int:
+	var total := 0
+	var ranks: Dictionary = player.get("talents", {}).get("ranks", {})
+	for talent in current_talent_tree().get("nodes", []):
+		var rank := int(ranks.get(str(talent.get("id", "")), 0))
+		for effect in talent.get("effects", []):
+			if str(effect.get("type", "")) == effect_type and str(effect.get("skillId", "")) == skill_id:
+				total += int(effect.get("amount", 0)) * rank
+	return total
+
+func can_spend_talent(talent: Dictionary) -> bool:
+	var talents: Dictionary = player.get("talents", {})
+	if int(talents.get("availablePoints", 0)) <= 0 or int(player.get("level", 1)) < int(talent.get("requiredLevel", 1)):
+		return false
+	var ranks: Dictionary = talents.get("ranks", {})
+	if int(ranks.get(str(talent.get("id", "")), 0)) >= int(talent.get("maxRank", 1)):
+		return false
+	for prereq in talent.get("prerequisiteTalentIds", []):
+		if int(ranks.get(str(prereq), 0)) <= 0:
+			return false
+	return true
+
+func spend_talent_point(talent_id: String) -> void:
+	for talent in current_talent_tree().get("nodes", []):
+		if str(talent.get("id", "")) != talent_id:
+			continue
+		if not can_spend_talent(talent):
+			add_message("You cannot learn %s yet." % talent.get("name", "that talent"), "warning")
+			return
+		var talents: Dictionary = player["talents"]
+		var ranks: Dictionary = talents.get("ranks", {})
+		ranks[talent_id] = int(ranks.get(talent_id, 0)) + 1
+		talents["ranks"] = ranks
+		talents["availablePoints"] = int(talents.get("availablePoints", 0)) - 1
+		talents["spentPoints"] = int(talents.get("spentPoints", 0)) + 1
+		player["talents"] = talents
+		add_message("Learned %s." % talent.get("name", "talent"), "success")
+		player["health"] = mini(int(player["health"]), effective_max_health())
+		player["mana"] = mini(int(player["mana"]), effective_max_mana())
+		state_changed.emit()
+		return
+	add_message("Unknown talent.", "warning")
 
 func active_stage_index() -> int:
 	var stages: Array = quest_chain.get("stages", [])
@@ -356,12 +571,14 @@ func _award_xp(amount: int) -> void:
 	while int(player["xp"]) >= int(player["xpToNextLevel"]):
 		player["xp"] = int(player["xp"]) - int(player["xpToNextLevel"])
 		player["level"] = int(player["level"]) + 1
+		player["talents"]["availablePoints"] = int(player["talents"].get("availablePoints", 0)) + 1
 		player["maxHealth"] = int(player["maxHealth"]) + 10
 		player["maxMana"] = int(player["maxMana"]) + 5
 		player["health"] = effective_max_health()
 		player["mana"] = effective_max_mana()
 		player["xpToNextLevel"] = 100 if int(player["level"]) == 2 else int(player["xpToNextLevel"]) + 50
-		add_message("You reached level %d." % int(player["level"]), "success")
+		var template := str(current_class().get("levelUpMessage", "You reached level {level}."))
+		add_message(template.replace("{level}", str(int(player["level"]))), "success")
 
 func _check_zone_completion() -> void:
 	var complete := true
@@ -413,6 +630,39 @@ func _decrement_inventory_item(item_id: String) -> void:
 				inventory.remove_at(index)
 			player["inventory"] = inventory
 			return
+
+func _grant_starting_item(item_id: String) -> void:
+	var definition: Dictionary = items_by_id.get(item_id, {})
+	if definition.is_empty():
+		return
+	var item := definition.duplicate(true)
+	item["quantity"] = int(item.get("quantity", 1))
+	if bool(item.get("equippable", false)) and str(item.get("equipmentSlot", "")) != "":
+		player["equipment"][str(item["equipmentSlot"])] = item
+	else:
+		var inventory: Array = player.get("inventory", [])
+		inventory.append(item)
+		player["inventory"] = inventory
+
+func _enemy_retaliates() -> void:
+	var retaliation := enemy_damage(active_enemy)
+	player["health"] = maxi(0, int(player["health"]) - retaliation)
+	add_message("%s hits you for %d damage." % [active_enemy.get("name", "The enemy"), retaliation], "combat")
+	if int(player["health"]) <= 0:
+		defeated = true
+		add_message("You are defeated. Restart to try again.", "warning")
+
+func _advance_turn() -> void:
+	var cooldowns: Dictionary = player.get("skills", {}).get("cooldowns", {})
+	for skill_id in cooldowns.keys():
+		cooldowns[skill_id] = maxi(0, int(cooldowns[skill_id]) - 1)
+	player["skills"]["cooldowns"] = cooldowns
+	var remaining: Array[Dictionary] = []
+	for modifier in temporary_modifiers:
+		modifier["remainingTurns"] = int(modifier.get("remainingTurns", 0)) - 1
+		if int(modifier["remainingTurns"]) > 0:
+			remaining.append(modifier)
+	temporary_modifiers = remaining
 
 func _position_from_array(value) -> Dictionary:
 	if typeof(value) != TYPE_ARRAY or value.size() < 2:
