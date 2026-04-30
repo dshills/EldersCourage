@@ -1,0 +1,43 @@
+# Go build artifacts
+/bin/
+/build/
+/dist/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Go workspace and coverage
+go.work
+go.work.sum
+coverage.out
+coverage.html
+
+# Dependency/vendor output
+/vendor/
+
+# Local environment
+.env
+.env.*
+!.env.example
+
+# Editor and OS files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Godot local/imported files
+game/.godot/
+game/export.cfg
+game/export_presets.cfg
+
+# Local saves and logs
+*.log
+*.tmp
+elders_save.json
