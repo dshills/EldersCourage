@@ -1,0 +1,30 @@
+[
+  {
+    "id": "bone_thrall",
+    "name": "Bone Thrall",
+    "role": "melee",
+    "maxHealth": 60,
+    "attackDamage": 10
+  },
+  {
+    "id": "ash_witch",
+    "name": "Ash Witch",
+    "role": "ranged",
+    "maxHealth": 42,
+    "attackDamage": 12
+  },
+  {
+    "id": "hollowed_brute",
+    "name": "Hollow Brute",
+    "role": "heavy",
+    "maxHealth": 115,
+    "attackDamage": 22
+  },
+  {
+    "id": "bell_ringer_below",
+    "name": "The Bell-Ringer Below",
+    "role": "boss",
+    "maxHealth": 260,
+    "attackDamage": 28
+  }
+]

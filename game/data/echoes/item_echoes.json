@@ -11,6 +11,26 @@
     }
   },
   {
+    "id": "echo_last_duel",
+    "name": "Last Duel",
+    "trigger": "basic_attack_hit",
+    "effect": {
+      "type": "delayed_second_hit",
+      "damageMultiplier": 0.45,
+      "delaySeconds": 0.25
+    }
+  },
+  {
+    "id": "echo_bone_memory",
+    "name": "Bone Memory",
+    "trigger": "enemy_killed",
+    "effect": {
+      "type": "brief_armor_gain",
+      "armor": 3,
+      "durationSeconds": 4
+    }
+  },
+  {
     "id": "echo_blood_refund",
     "name": "Blood Refund",
     "trigger": "enemy_killed",

@@ -2,31 +2,37 @@
   {
     "id": "curse_cold_vulnerability",
     "name": "Cold Vulnerability",
-    "effect": { "stat": "cold_damage_taken_percent", "value": 15 }
+    "description": "Cold dread weakens your guard.",
+    "effects": [{ "stat": "armor", "value": -2 }]
   },
   {
     "id": "curse_blood_tithe",
     "name": "Blood Tithe",
-    "effect": { "stat": "skill_health_cost_chance_percent", "value": 10 }
+    "description": "The bargain takes vitality before blood is spilled.",
+    "effects": [{ "stat": "max_health", "value": -10 }]
   },
   {
     "id": "curse_slow_blood",
     "name": "Slow Blood",
-    "effect": { "stat": "will_generation_percent", "value": -10 }
+    "description": "Cold blood slows your limbs.",
+    "effects": [{ "stat": "move_speed", "value": -8 }]
   },
   {
     "id": "curse_rot_sickness",
     "name": "Rot Sickness",
-    "effect": { "stat": "healing_received_percent", "value": -20 }
+    "description": "The rot eats at your vigor.",
+    "effects": [{ "stat": "max_health", "value": -8 }]
   },
   {
     "id": "curse_echo_hunger",
     "name": "Echo Hunger",
-    "effect": { "stat": "enemy_echo_chance_percent", "value": 8 }
+    "description": "The echo pulls strength from your guard.",
+    "effects": [{ "stat": "armor", "value": -3 }]
   },
   {
     "id": "curse_ash_thirst",
     "name": "Ash Thirst",
-    "effect": { "stat": "burn_self_chance_percent", "value": 8 }
+    "description": "The ash drinks from your vitality.",
+    "effects": [{ "stat": "max_health", "value": -8 }]
   }
 ]

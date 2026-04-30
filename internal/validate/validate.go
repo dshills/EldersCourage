@@ -20,13 +20,15 @@ type document struct {
 }
 
 type contentSummary struct {
-	Weapons   int
-	Armor     int
-	Rings     int
-	Curses    int
-	Echoes    int
-	Synergies int
-	ItemTags  map[string]bool
+	Weapons     int
+	Armor       int
+	Rings       int
+	Curses      int
+	Echoes      int
+	Synergies   int
+	ItemTags    map[string]bool
+	EnemyIDs    map[string]bool
+	ModifierIDs map[string]bool
 }
 
 // Data validates JSON content files under root.
@@ -68,7 +70,7 @@ func Data(root string) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
-	summary := contentSummary{ItemTags: map[string]bool{}}
+	summary := contentSummary{ItemTags: map[string]bool{}, EnemyIDs: map[string]bool{}, ModifierIDs: map[string]bool{}}
 	for _, doc := range documents {
 		if err := validateDocument(doc.path, doc.value, seenIDs); err != nil {
 			return Result{}, err
@@ -76,7 +78,7 @@ func Data(root string) (Result, error) {
 		summarizeDocument(doc.path, doc.value, &summary)
 	}
 	for _, doc := range documents {
-		if err := validateReferences(doc.path, doc.value, seenIDs, summary.ItemTags); err != nil {
+		if err := validateReferences(doc.path, doc.value, seenIDs, summary.ItemTags, summary.EnemyIDs, summary.ModifierIDs); err != nil {
 			return Result{}, err
 		}
 	}
@@ -154,6 +156,12 @@ func validateDocument(path string, value any, seenIDs map[string]string) error {
 	if strings.Contains(cleanPath, "/curses/") {
 		return validateCurseDocument(path, value)
 	}
+	if strings.Contains(cleanPath, "/enemies/") {
+		return validateEnemyDocument(path, value)
+	}
+	if strings.Contains(cleanPath, "/modifiers/") {
+		return validateModifierDocument(path, value)
+	}
 	if strings.Contains(cleanPath, "/synergies/") {
 		return validateSynergyDocument(path, value)
 	}
@@ -190,7 +198,7 @@ func validateItem(path string, item map[string]any) error {
 		}
 	}
 	itemType, ok := item["type"].(string)
-	if !ok || !validString(itemType, []string{"weapon", "armor", "ring"}) {
+	if !ok || !validString(itemType, []string{"weapon", "armor", "ring", "consumable"}) {
 		return fmt.Errorf("%s: item %q has invalid type %q", path, item["id"], item["type"])
 	}
 	rarity, ok := item["rarity"].(string)
@@ -246,9 +254,21 @@ func validateLootDocument(path string, value any, seenIDs map[string]string) err
 		return fmt.Errorf("%s: loot document must contain drops array", path)
 	}
 	for _, rawDrop := range drops {
-		dropID, ok := rawDrop.(string)
-		if !ok || strings.TrimSpace(dropID) == "" {
-			return fmt.Errorf("%s: loot drop IDs must be non-empty strings", path)
+		dropID := ""
+		if rawID, ok := rawDrop.(string); ok {
+			dropID = rawID
+		} else if drop, ok := rawDrop.(map[string]any); ok {
+			rawItemID, ok := drop["itemId"].(string)
+			if !ok || strings.TrimSpace(rawItemID) == "" {
+				return fmt.Errorf("%s: loot drop objects require non-empty itemId", path)
+			}
+			dropID = rawItemID
+			weight, ok := drop["weight"].(float64)
+			if !ok || weight <= 0 {
+				return fmt.Errorf("%s: loot drop %q requires positive numeric weight", path, dropID)
+			}
+		} else {
+			return fmt.Errorf("%s: loot drops must be item ID strings or weighted objects", path)
 		}
 		if _, exists := seenIDs[dropID]; !exists {
 			return fmt.Errorf("%s: loot drop references unknown item %q", path, dropID)
@@ -283,10 +303,82 @@ func validateEcho(path string, echo map[string]any) error {
 			return fmt.Errorf("%s: echo missing string field %q", path, field)
 		}
 	}
-	if trigger, ok := echo["trigger"].(string); ok && !validString(trigger, []string{"enemy_killed", "enemy_killed_by_fire"}) {
-		return fmt.Errorf("%s: echo %q has invalid trigger %q", path, echo["id"], trigger)
+	if trigger, ok := echo["trigger"].(string); ok {
+		if !validString(trigger, []string{"enemy_killed", "enemy_killed_by_fire", "basic_attack_hit"}) {
+			return fmt.Errorf("%s: echo %q has invalid trigger %q", path, echo["id"], trigger)
+		}
+		effect, ok := echo["effect"].(map[string]any)
+		if !ok {
+			return fmt.Errorf("%s: echo %q missing effect object", path, echo["id"])
+		}
+		effectType, ok := effect["type"].(string)
+		if !ok || !validString(effectType, []string{"damage_orb", "delayed_second_hit", "brief_armor_gain", "restore_will", "chill_nearby", "vulnerable_nearby", "bell_pulse"}) {
+			return fmt.Errorf("%s: echo %q has invalid effect type %q", path, echo["id"], effect["type"])
+		}
+		for _, field := range requiredEchoEffectFields(effectType) {
+			if value, ok := effect[field].(float64); !ok || value < 0 {
+				return fmt.Errorf("%s: echo %q effect field %q must be non-negative numeric", path, echo["id"], field)
+			}
+		}
+	} else if strings.HasPrefix(fmt.Sprint(echo["id"]), "death_echo_") {
+		if err := validateDeathEcho(path, echo); err != nil {
+			return err
+		}
 	}
 	return nil
+}
+
+func validateDeathEcho(path string, echo map[string]any) error {
+	effects, ok := echo["effectsUntilReclaimed"].([]any)
+	if !ok || len(effects) == 0 {
+		return fmt.Errorf("%s: death echo %q requires effectsUntilReclaimed", path, echo["id"])
+	}
+	for _, rawEffect := range effects {
+		effect, ok := rawEffect.(map[string]any)
+		if !ok {
+			return fmt.Errorf("%s: death echo %q effect must be an object", path, echo["id"])
+		}
+		target, ok := effect["target"].(string)
+		if !ok || !validString(target, []string{"enemies_in_room", "nearby_enemies"}) {
+			return fmt.Errorf("%s: death echo %q has invalid effect target %q", path, echo["id"], effect["target"])
+		}
+		stat, ok := effect["stat"].(string)
+		if !ok || !validString(stat, []string{"damage_percent", "movement_speed_percent"}) {
+			return fmt.Errorf("%s: death echo %q has invalid effect stat %q", path, echo["id"], effect["stat"])
+		}
+		if value, ok := effect["value"].(float64); !ok || value < 0 {
+			return fmt.Errorf("%s: death echo %q effect value must be non-negative numeric", path, echo["id"])
+		}
+	}
+	reward, ok := echo["reclaimReward"].(map[string]any)
+	if !ok {
+		return fmt.Errorf("%s: death echo %q requires reclaimReward", path, echo["id"])
+	}
+	if value, ok := reward["attunementXp"].(float64); !ok || value < 0 {
+		return fmt.Errorf("%s: death echo %q reclaimReward attunementXp must be non-negative numeric", path, echo["id"])
+	}
+	return nil
+}
+
+func requiredEchoEffectFields(effectType string) []string {
+	switch effectType {
+	case "damage_orb":
+		return []string{"durationSeconds", "damagePerSecond"}
+	case "delayed_second_hit":
+		return []string{"damageMultiplier", "delaySeconds"}
+	case "brief_armor_gain":
+		return []string{"armor", "durationSeconds"}
+	case "restore_will":
+		return []string{"amount"}
+	case "chill_nearby":
+		return []string{"durationSeconds", "slowPercent"}
+	case "vulnerable_nearby":
+		return []string{"durationSeconds", "damageTakenPercent"}
+	case "bell_pulse":
+		return []string{"damage"}
+	default:
+		return nil
+	}
 }
 
 func validateCurseDocument(path string, value any) error {
@@ -296,15 +388,42 @@ func validateCurseDocument(path string, value any) error {
 				return fmt.Errorf("%s: curse missing string field %q", path, field)
 			}
 		}
-		effect, ok := curse["effect"].(map[string]any)
-		if !ok {
-			return fmt.Errorf("%s: curse %q missing effect object", path, curse["id"])
+		effects, ok := curse["effects"].([]any)
+		if !ok || len(effects) == 0 {
+			return fmt.Errorf("%s: curse %q missing effects array", path, curse["id"])
 		}
-		if raw, ok := effect["stat"].(string); !ok || strings.TrimSpace(raw) == "" {
-			return fmt.Errorf("%s: curse %q missing effect stat", path, curse["id"])
+		for _, rawEffect := range effects {
+			effect, ok := rawEffect.(map[string]any)
+			if !ok {
+				return fmt.Errorf("%s: curse %q effect must be an object", path, curse["id"])
+			}
+			stat, ok := effect["stat"].(string)
+			if !ok || !validString(stat, validStatNames()) {
+				return fmt.Errorf("%s: curse %q has invalid effect stat %q", path, curse["id"], effect["stat"])
+			}
+			if _, ok := effect["value"].(float64); !ok {
+				return fmt.Errorf("%s: curse %q effect value must be numeric", path, curse["id"])
+			}
 		}
-		if _, ok := effect["value"].(float64); !ok {
-			return fmt.Errorf("%s: curse %q effect value must be numeric", path, curse["id"])
+	}
+	return nil
+}
+
+func validateEnemyDocument(path string, value any) error {
+	for _, enemy := range records(value) {
+		for _, field := range []string{"id", "name", "role"} {
+			if raw, ok := enemy[field].(string); !ok || strings.TrimSpace(raw) == "" {
+				return fmt.Errorf("%s: enemy missing string field %q", path, field)
+			}
+		}
+		role, _ := enemy["role"].(string)
+		if !validString(role, []string{"melee", "ranged", "heavy", "boss"}) {
+			return fmt.Errorf("%s: enemy %q has invalid role %q", path, enemy["id"], role)
+		}
+		for _, field := range []string{"maxHealth", "attackDamage"} {
+			if value, ok := enemy[field].(float64); !ok || value <= 0 {
+				return fmt.Errorf("%s: enemy %q field %q must be positive numeric", path, enemy["id"], field)
+			}
 		}
 	}
 	return nil
@@ -352,12 +471,63 @@ func validateDungeonDocument(path string, value any) error {
 			if !ok || !validString(roomType, []string{"entrance", "combat", "elite", "treasure", "boss"}) {
 				return fmt.Errorf("%s: dungeon room has invalid type %q", path, room["type"])
 			}
+			for _, field := range []string{"playerStart"} {
+				if rawPoint, ok := room[field]; ok {
+					if err := validatePoint(path, room["id"], field, rawPoint); err != nil {
+						return err
+					}
+				}
+			}
+			for _, rawPoint := range asArray(room["spawnPoints"]) {
+				if err := validatePoint(path, room["id"], "spawnPoints", rawPoint); err != nil {
+					return err
+				}
+			}
 		}
 	}
 	return nil
 }
 
-func validateReferences(path string, value any, seenIDs map[string]string, itemTags map[string]bool) error {
+func validatePoint(path string, roomID any, field string, value any) error {
+	point, ok := value.([]any)
+	if !ok || len(point) != 2 {
+		return fmt.Errorf("%s: dungeon room %q field %q must be a two-number array", path, roomID, field)
+	}
+	for _, coordinate := range point {
+		if _, ok := coordinate.(float64); !ok {
+			return fmt.Errorf("%s: dungeon room %q field %q must contain numeric coordinates", path, roomID, field)
+		}
+	}
+	return nil
+}
+
+func validateModifierDocument(path string, value any) error {
+	for _, modifier := range records(value) {
+		for _, field := range []string{"id", "name"} {
+			if raw, ok := modifier[field].(string); !ok || strings.TrimSpace(raw) == "" {
+				return fmt.Errorf("%s: modifier missing string field %q", path, field)
+			}
+		}
+		for _, field := range []string{"healthMultiplier", "damageMultiplier", "speedMultiplier"} {
+			if value, ok := modifier[field].(float64); !ok || value <= 0 {
+				return fmt.Errorf("%s: modifier %q field %q must be positive numeric", path, modifier["id"], field)
+			}
+		}
+		if color, ok := modifier["color"].([]any); ok {
+			if len(color) != 3 {
+				return fmt.Errorf("%s: modifier %q color must contain three numbers", path, modifier["id"])
+			}
+			for _, channel := range color {
+				if _, ok := channel.(float64); !ok {
+					return fmt.Errorf("%s: modifier %q color must be numeric", path, modifier["id"])
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func validateReferences(path string, value any, seenIDs map[string]string, itemTags map[string]bool, enemyIDs map[string]bool, modifierIDs map[string]bool) error {
 	cleanPath := filepath.ToSlash(path)
 	if strings.Contains(cleanPath, "/items/") {
 		for _, item := range records(value) {
@@ -393,6 +563,48 @@ func validateReferences(path string, value any, seenIDs map[string]string, itemT
 			}
 		}
 	}
+	if strings.Contains(cleanPath, "/dungeons/") {
+		for _, dungeon := range records(value) {
+			for _, rawRoom := range asArray(dungeon["rooms"]) {
+				room, ok := rawRoom.(map[string]any)
+				if !ok {
+					continue
+				}
+				if lootTableID, ok := room["lootTable"].(string); ok && lootTableID != "" {
+					if _, exists := seenIDs[lootTableID]; !exists {
+						return fmt.Errorf("%s: dungeon room %q references unknown loot table %q", path, room["id"], lootTableID)
+					}
+				}
+				for _, rawItemID := range asArray(room["rewardDrops"]) {
+					itemID, ok := rawItemID.(string)
+					if !ok || strings.TrimSpace(itemID) == "" {
+						return fmt.Errorf("%s: dungeon room %q has invalid reward drop reference", path, room["id"])
+					}
+					if _, exists := seenIDs[itemID]; !exists {
+						return fmt.Errorf("%s: dungeon room %q references unknown reward item %q", path, room["id"], itemID)
+					}
+				}
+				for _, rawEnemyID := range asArray(room["encounter"]) {
+					enemyID, ok := rawEnemyID.(string)
+					if !ok || strings.TrimSpace(enemyID) == "" {
+						return fmt.Errorf("%s: dungeon room %q has invalid enemy reference", path, room["id"])
+					}
+					if !enemyIDs[enemyID] {
+						return fmt.Errorf("%s: dungeon room %q references unknown enemy %q", path, room["id"], enemyID)
+					}
+				}
+				for _, rawModifierID := range asArray(room["modifiers"]) {
+					modifierID, ok := rawModifierID.(string)
+					if !ok || strings.TrimSpace(modifierID) == "" {
+						return fmt.Errorf("%s: dungeon room %q has invalid modifier reference", path, room["id"])
+					}
+					if !modifierIDs[modifierID] {
+						return fmt.Errorf("%s: dungeon room %q references unknown modifier %q", path, room["id"], modifierID)
+					}
+				}
+			}
+		}
+	}
 	return nil
 }
 
@@ -417,6 +629,18 @@ func summarizeDocument(path string, value any, summary *contentSummary) {
 		}
 	case strings.Contains(cleanPath, "/curses/"):
 		summary.Curses += len(records(value))
+	case strings.Contains(cleanPath, "/enemies/"):
+		for _, enemy := range records(value) {
+			if id, ok := enemy["id"].(string); ok {
+				summary.EnemyIDs[id] = true
+			}
+		}
+	case strings.Contains(cleanPath, "/modifiers/"):
+		for _, modifier := range records(value) {
+			if id, ok := modifier["id"].(string); ok {
+				summary.ModifierIDs[id] = true
+			}
+		}
 	case strings.Contains(cleanPath, "/echoes/"):
 		for _, echo := range records(value) {
 			if _, ok := echo["trigger"]; ok {
@@ -481,5 +705,6 @@ func validStatNames() []string {
 		"fire_resistance",
 		"max_health",
 		"max_will",
+		"move_speed",
 	}
 }

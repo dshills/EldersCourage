@@ -2,17 +2,55 @@
   "id": "dungeon_ashen_catacombs",
   "name": "The Ashen Catacombs",
   "rooms": [
-    { "id": "entrance", "type": "entrance" },
-    { "id": "combat_1", "type": "combat", "encounter": ["bone_thrall", "bone_thrall"] },
-    { "id": "combat_2", "type": "combat", "encounter": ["bone_thrall", "ash_witch"] },
-    { "id": "combat_3", "type": "combat", "encounter": ["ash_witch", "hollowed_brute"] },
+    { "id": "entrance", "name": "Entrance", "type": "entrance", "playerStart": [360, 360] },
+    {
+      "id": "combat_1",
+      "name": "Bone Hall",
+      "type": "combat",
+      "lootTable": "loot_table_ashen_catacombs_basic",
+      "encounter": ["bone_thrall", "bone_thrall"],
+      "spawnPoints": [[850, 275], [980, 470]]
+    },
+    {
+      "id": "combat_2",
+      "name": "Ash Gallery",
+      "type": "combat",
+      "lootTable": "loot_table_ashen_catacombs_basic",
+      "encounter": ["bone_thrall", "ash_witch"],
+      "spawnPoints": [[790, 480], [980, 250]]
+    },
+    {
+      "id": "combat_3",
+      "name": "Hollow Crossing",
+      "type": "combat",
+      "lootTable": "loot_table_ashen_catacombs_basic",
+      "encounter": ["ash_witch", "hollowed_brute"],
+      "spawnPoints": [[825, 250], [1000, 460]]
+    },
     {
       "id": "elite_1",
+      "name": "Cursed Ossuary",
       "type": "elite",
+      "lootTable": "loot_table_ashen_catacombs_basic",
       "encounter": ["bone_thrall", "ash_witch", "hollowed_brute"],
+      "spawnPoints": [[760, 510], [930, 260], [1030, 470]],
       "modifiers": ["burning", "vampiric", "echoing"]
     },
-    { "id": "treasure_1", "type": "treasure" },
-    { "id": "boss", "type": "boss", "encounter": ["bell_ringer_below"] }
+    {
+      "id": "treasure_1",
+      "name": "Burial Reliquary",
+      "type": "treasure",
+      "lootTable": "loot_table_ashen_catacombs_basic",
+      "rewardDrops": ["ring_choirless_ring", "consumable_scroll_first_knowing"]
+    },
+    {
+      "id": "boss",
+      "name": "Bell Pit",
+      "type": "boss",
+      "lootTable": "loot_table_ashen_catacombs_basic",
+      "encounter": ["bell_ringer_below"],
+      "spawnPoints": [[850, 275]],
+      "rewardDrops": ["ring_bellringers_oath"]
+    }
   ]
 }

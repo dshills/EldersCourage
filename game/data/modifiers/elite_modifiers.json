@@ -1,0 +1,35 @@
+[
+  {
+    "id": "burning",
+    "name": "Burning",
+    "healthMultiplier": 1.5,
+    "damageMultiplier": 1.25,
+    "speedMultiplier": 1.08,
+    "color": [1.0, 0.55, 0.25],
+    "groundEffect": {
+      "enabled": true,
+      "intervalSeconds": 2.0,
+      "damage": 4,
+      "radius": 34
+    }
+  },
+  {
+    "id": "vampiric",
+    "name": "Vampiric",
+    "healthMultiplier": 1.5,
+    "damageMultiplier": 1.25,
+    "speedMultiplier": 1.08,
+    "color": [1.0, 0.25, 0.35],
+    "lifeStealPercent": 35
+  },
+  {
+    "id": "echoing",
+    "name": "Echoing",
+    "healthMultiplier": 1.5,
+    "damageMultiplier": 1.25,
+    "speedMultiplier": 1.08,
+    "color": [0.55, 0.75, 1.0],
+    "echoDamagePercent": 50,
+    "echoDelaySeconds": 0.35
+  }
+]

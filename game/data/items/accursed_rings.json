@@ -13,9 +13,9 @@
     },
     "visibleStats": [{ "stat": "fire_damage_percent", "value": 12 }],
     "hiddenStats": [{ "attunementLevel": 2, "stat": "cooldown_recovery_percent", "value": 5 }],
-    "curse": { "id": "curse_cold_vulnerability", "revealAttunementLevel": 3, "description": "Cold damage taken is increased." },
-    "echoes": [{ "id": "echo_spectral_ember", "unlockAttunementLevel": 4 }],
-    "attunement": { "enabled": true, "xp": 0, "level": 0, "maxLevel": 5 },
+    "curse": { "id": "curse_cold_vulnerability", "revealAttunementLevel": 3, "description": "Cold damage taken is increased and armor is reduced.", "effects": [{ "stat": "armor", "value": -2 }] },
+    "echoes": [{ "id": "echo_spectral_ember", "unlockAttunementLevel": 2 }],
+    "attunement": { "enabled": true, "xp": 0, "level": 0, "maxLevel": 3 },
     "synergyTags": ["ash", "ring", "vengeful_soul"]
   },
   {
@@ -32,9 +32,9 @@
     },
     "visibleStats": [{ "stat": "base_damage", "value": 3 }],
     "hiddenStats": [{ "attunementLevel": 2, "stat": "max_health", "value": 12 }],
-    "curse": { "id": "curse_blood_tithe", "revealAttunementLevel": 3, "description": "Skills occasionally cost health." },
-    "echoes": [{ "id": "echo_blood_refund", "unlockAttunementLevel": 4 }],
-    "attunement": { "enabled": true, "xp": 0, "level": 0, "maxLevel": 5 },
+    "curse": { "id": "curse_blood_tithe", "revealAttunementLevel": 3, "description": "The bargain reduces maximum health.", "effects": [{ "stat": "max_health", "value": -10 }] },
+    "echoes": [{ "id": "echo_last_duel", "unlockAttunementLevel": 2 }],
+    "attunement": { "enabled": true, "xp": 0, "level": 0, "maxLevel": 3 },
     "synergyTags": ["blood", "ring", "bargaining_soul"]
   },
   {
@@ -51,9 +51,9 @@
     },
     "visibleStats": [{ "stat": "max_will", "value": 8 }],
     "hiddenStats": [{ "attunementLevel": 2, "stat": "cold_resistance", "value": 12 }],
-    "curse": { "id": "curse_slow_blood", "revealAttunementLevel": 3, "description": "Will generation is slightly reduced." },
-    "echoes": [{ "id": "echo_frost_grave", "unlockAttunementLevel": 4 }],
-    "attunement": { "enabled": true, "xp": 0, "level": 0, "maxLevel": 5 },
+    "curse": { "id": "curse_slow_blood", "revealAttunementLevel": 3, "description": "Blood chills in your limbs, slowing movement.", "effects": [{ "stat": "move_speed", "value": -8 }] },
+    "echoes": [{ "id": "echo_frost_grave", "unlockAttunementLevel": 2 }],
+    "attunement": { "enabled": true, "xp": 0, "level": 0, "maxLevel": 3 },
     "synergyTags": ["frost", "ring", "patient_soul"]
   },
   {
@@ -70,9 +70,9 @@
     },
     "visibleStats": [{ "stat": "critical_chance_percent", "value": 4 }],
     "hiddenStats": [{ "attunementLevel": 2, "stat": "base_damage", "value": 2 }],
-    "curse": { "id": "curse_rot_sickness", "revealAttunementLevel": 3, "description": "Healing is less effective." },
-    "echoes": [{ "id": "echo_decay_bloom", "unlockAttunementLevel": 4 }],
-    "attunement": { "enabled": true, "xp": 0, "level": 0, "maxLevel": 5 },
+    "curse": { "id": "curse_rot_sickness", "revealAttunementLevel": 3, "description": "The rot eats at your vigor.", "effects": [{ "stat": "max_health", "value": -8 }] },
+    "echoes": [{ "id": "echo_decay_bloom", "unlockAttunementLevel": 2 }],
+    "attunement": { "enabled": true, "xp": 0, "level": 0, "maxLevel": 3 },
     "synergyTags": ["rot", "ring", "resentful_soul"]
   },
   {
@@ -89,9 +89,9 @@
     },
     "visibleStats": [{ "stat": "max_will", "value": 12 }],
     "hiddenStats": [{ "attunementLevel": 2, "stat": "bell_damage_percent", "value": 10 }],
-    "curse": { "id": "curse_echo_hunger", "revealAttunementLevel": 3, "description": "Enemies sometimes echo your violence." },
-    "echoes": [{ "id": "echo_burial_toll", "unlockAttunementLevel": 4 }],
-    "attunement": { "enabled": true, "xp": 0, "level": 0, "maxLevel": 5 },
+    "curse": { "id": "curse_echo_hunger", "revealAttunementLevel": 3, "description": "The oath pulls strength from your guard.", "effects": [{ "stat": "armor", "value": -3 }] },
+    "echoes": [{ "id": "echo_burial_toll", "unlockAttunementLevel": 2 }],
+    "attunement": { "enabled": true, "xp": 0, "level": 0, "maxLevel": 3 },
     "synergyTags": ["bone", "echo", "ring", "judging_soul"]
   }
 ]

@@ -7,7 +7,7 @@
       { "target": "enemies_in_room", "stat": "movement_speed_percent", "value": 5 }
     ],
     "reclaimReward": {
-      "attunementXpMultiplier": 1.25,
+      "attunementXp": 25,
       "durationSeconds": 120
     }
   }
