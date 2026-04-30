@@ -618,7 +618,9 @@ func _apply_elite_modifier(arena_enemy: Node, modifier: String) -> void:
 	var damage_multiplier := float(definition.get("damageMultiplier", 1.25))
 	var speed_multiplier := float(definition.get("speedMultiplier", 1.08))
 	var health_multiplier := float(definition.get("healthMultiplier", 1.5))
-	if arena_enemy.has_method("apply_haunted_modifier"):
+	if arena_enemy.has_method("apply_elite_modifier"):
+		arena_enemy.apply_elite_modifier(damage_multiplier, speed_multiplier)
+	elif arena_enemy.has_method("apply_haunted_modifier"):
 		arena_enemy.apply_haunted_modifier(damage_multiplier, speed_multiplier)
 	if arena_enemy.get("max_health") != null:
 		arena_enemy.set("max_health", int(roundi(float(arena_enemy.get("max_health")) * health_multiplier)))
@@ -820,12 +822,18 @@ func _on_death_echo_reclaimed() -> void:
 		return
 	death_echo_reclaimed = true
 	haunted_room = false
+	_clear_haunted_modifiers()
 	var reward: Dictionary = death_echo_definition.get("reclaimReward", {})
 	var messages: Array[String] = player.award_attunement_xp(int(reward.get("attunementXp", 25)))
 	message.text = "Death Echo reclaimed. Attunement surges."
 	if not messages.is_empty():
 		message.text = messages[0]
 	_save_game()
+
+func _clear_haunted_modifiers() -> void:
+	for arena_enemy in enemies:
+		if is_instance_valid(arena_enemy) and arena_enemy.has_method("clear_haunted_modifier"):
+			arena_enemy.clear_haunted_modifier()
 
 func _update_inventory_panel() -> void:
 	inventory_panel.visible = inventory_visible

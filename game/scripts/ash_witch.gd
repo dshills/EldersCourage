@@ -12,6 +12,10 @@ const SHOOT_COOLDOWN := 1.75
 
 var damage_multiplier := 1.0
 var speed_multiplier := 1.0
+var elite_damage_multiplier := 1.0
+var elite_speed_multiplier := 1.0
+var haunted_damage_multiplier := 1.0
+var haunted_speed_multiplier := 1.0
 var max_health := 42
 var current_health := 42
 var attack_damage := 12
@@ -73,8 +77,23 @@ func apply_status(status_name: String, duration: float, value: float) -> void:
 	}
 
 func apply_haunted_modifier(new_damage_multiplier: float, new_speed_multiplier: float) -> void:
-	damage_multiplier = maxf(damage_multiplier, new_damage_multiplier)
-	speed_multiplier = maxf(speed_multiplier, new_speed_multiplier)
+	haunted_damage_multiplier = new_damage_multiplier
+	haunted_speed_multiplier = new_speed_multiplier
+	_refresh_multipliers()
+
+func clear_haunted_modifier() -> void:
+	haunted_damage_multiplier = 1.0
+	haunted_speed_multiplier = 1.0
+	_refresh_multipliers()
+
+func apply_elite_modifier(new_damage_multiplier: float, new_speed_multiplier: float) -> void:
+	elite_damage_multiplier = new_damage_multiplier
+	elite_speed_multiplier = new_speed_multiplier
+	_refresh_multipliers()
+
+func _refresh_multipliers() -> void:
+	damage_multiplier = elite_damage_multiplier * haunted_damage_multiplier
+	speed_multiplier = elite_speed_multiplier * haunted_speed_multiplier
 
 func _process_statuses(delta: float) -> void:
 	var expired: Array[String] = []
