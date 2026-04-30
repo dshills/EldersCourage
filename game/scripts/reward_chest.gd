@@ -2,6 +2,8 @@ extends Area2D
 
 signal opened(at_position: Vector2)
 
+const ChestTexture := preload("res://assets/sprites/loot/reward_chest.png")
+
 var opened_once := false
 
 func _ready() -> void:
@@ -21,6 +23,6 @@ func _on_body_entered(body: Node) -> void:
 	queue_free()
 
 func _draw() -> void:
-	draw_rect(Rect2(Vector2(-22, -17), Vector2(44, 34)), Color(0.42, 0.24, 0.08))
-	draw_rect(Rect2(Vector2(-18, -13), Vector2(36, 26)), Color(0.70, 0.45, 0.16), false, 3.0)
-	draw_circle(Vector2(0, 0), 4, Color(1.0, 0.82, 0.22))
+	draw_circle(Vector2(0, 0), 32, Color(0.95, 0.74, 0.24, 0.18))
+	draw_texture_rect(ChestTexture, Rect2(Vector2(-48, -32), Vector2(96, 64)), false)
+	draw_arc(Vector2.ZERO, 32, 0.0, TAU, 32, Color(1.0, 0.82, 0.22, 0.65), 2.0)

@@ -20,6 +20,7 @@ const FloorTexture := preload("res://assets/tiles/ashen_catacombs_floor.png")
 const WallTexture := preload("res://assets/tiles/ashen_catacombs_wall.png")
 const CrackedFloorTexture := preload("res://assets/tiles/ashen_catacombs_cracked_floor.png")
 const BloodMarkTexture := preload("res://assets/tiles/ashen_catacombs_blood_mark.png")
+const TitlePlaqueTexture := preload("res://assets/ui/title_plaque.png")
 
 const SAVE_PATH := "user://elders_save.json"
 
@@ -463,6 +464,15 @@ func _build_hud() -> void:
 	hud.position = Vector2(24, 20)
 	hud.add_theme_font_size_override("font_size", 20)
 	canvas.add_child(hud)
+
+	var title_plaque := TextureRect.new()
+	title_plaque.texture = TitlePlaqueTexture
+	title_plaque.position = Vector2(24, 58)
+	title_plaque.size = Vector2(210, 64)
+	title_plaque.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	title_plaque.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	title_plaque.modulate = Color(1, 1, 1, 0.86)
+	canvas.add_child(title_plaque)
 
 	message = Label.new()
 	message.position = Vector2(360, 300)
