@@ -1,0 +1,37 @@
+[
+  {
+    "id": "synergy_ash_bone_rising",
+    "name": "Ashes Remember the Bone",
+    "discoveryType": "hidden",
+    "requiredTags": ["ash", "bone"],
+    "effect": { "trigger": "enemy_killed_by_burning_bleed", "action": "summon_temporary_skeleton", "durationSeconds": 8 }
+  },
+  {
+    "id": "synergy_blood_oath",
+    "name": "Blood Oath",
+    "discoveryType": "explicit",
+    "requiredTags": ["blood", "ring"],
+    "effect": { "trigger": "bleed_kill", "action": "restore_will", "amount": 5 }
+  },
+  {
+    "id": "synergy_frost_grave",
+    "name": "Frost Grave",
+    "discoveryType": "scroll_revealed",
+    "requiredTags": ["frost", "grave"],
+    "effect": { "trigger": "chilled_enemy_hit_by_bell", "action": "increase_damage_taken_percent", "value": 15 }
+  },
+  {
+    "id": "synergy_rotting_edge",
+    "name": "Rotting Edge",
+    "discoveryType": "explicit",
+    "requiredTags": ["rot", "weapon"],
+    "effect": { "trigger": "critical_hit", "action": "apply_decay", "durationSeconds": 4 }
+  },
+  {
+    "id": "synergy_echo_chain",
+    "name": "Echo Chain",
+    "discoveryType": "hidden",
+    "requiredTags": ["echo", "ring"],
+    "effect": { "trigger": "item_echo_triggered", "action": "repeat_echo_once", "chancePercent": 20 }
+  }
+]

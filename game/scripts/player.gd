@@ -101,7 +101,7 @@ func _blood_cleave() -> void:
 	for target in enemies:
 		if not is_instance_valid(target) or not target.alive:
 			continue
-		var to_target := target.global_position - global_position
+		var to_target: Vector2 = target.global_position - global_position
 		if to_target.length() <= CLEAVE_RANGE and facing.normalized().dot(to_target.normalized()) > 0.25:
 			target.take_damage(CLEAVE_DAMAGE + _stat_total("base_damage"))
 			target.apply_status("bleed", 3.0, 4.0)
@@ -132,8 +132,8 @@ func _nearest_enemy_in_range(max_range: float, min_facing_dot: float) -> Node2D:
 	for target in enemies:
 		if not is_instance_valid(target) or not target.alive:
 			continue
-		var offset := target.global_position - global_position
-		var distance := offset.length()
+		var offset: Vector2 = target.global_position - global_position
+		var distance: float = offset.length()
 		if distance <= best_distance and facing.normalized().dot(offset.normalized()) >= min_facing_dot:
 			best = target
 			best_distance = distance

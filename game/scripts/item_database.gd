@@ -6,6 +6,7 @@ var loot_ids: Array[String] = []
 func load_data() -> void:
 	_load_item_file("res://data/items/starter_items.json")
 	_load_item_file("res://data/items/accursed_rings.json")
+	_load_item_file("res://data/items/phase7_items.json")
 	_load_loot_file("res://data/loot/arena_loot.json")
 
 func get_item(item_id: String) -> Dictionary:

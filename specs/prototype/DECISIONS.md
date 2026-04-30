@@ -55,3 +55,15 @@ Phase 6 implements the Ashen Catacombs as a fixed room sequence navigated with `
 ## D014: Save Through `user://`
 
 The prototype writes JSON save data to `user://elders_save.json`, preserving player inventory, equipment, attunement, reveal state, room progress, completion state, and Death Echo state.
+
+## D015: Enforce Prototype Content Counts in Go
+
+Phase 7 keeps content completeness in the validator rather than a separate checklist. Count requirements are enforced when validating `game/data`, while small unit-test fixtures can still validate isolated rules.
+
+## D016: Add Deterministic Loot Generation
+
+`elders generate-loot` reads item JSON and selects a matching rarity using an explicit or stable seed. This provides the first deterministic simulation hook without introducing external dependencies.
+
+## D017: Separate Static and Runtime Acceptance
+
+Phase 8 adds `elders acceptance-report` for content/tooling checks that can run without Godot. Runtime gameplay acceptance remains explicit manual verification because this environment does not include the Godot executable.

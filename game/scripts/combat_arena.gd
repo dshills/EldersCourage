@@ -242,7 +242,7 @@ func _spawn_enemy_by_id(enemy_id: String, spawn_position: Vector2, modifier := "
 			_spawn_boss(spawn_position)
 
 func _spawn_enemy(enemy_scene: Script, spawn_position: Vector2, modifier := "") -> void:
-	var spawned_enemy := enemy_scene.new()
+	var spawned_enemy: Node2D = enemy_scene.new()
 	spawned_enemy.position = spawn_position
 	spawned_enemy.target = player
 	if haunted_room:
@@ -317,15 +317,15 @@ func _on_enemy_died(enemy_position: Vector2) -> void:
 	player.grave_marks += randi_range(3, 8)
 	if randf() < 0.35:
 		player.identify_scrolls += 1
-	var reveal_messages := player.award_attunement_xp(75)
-	var echo_messages := _trigger_item_echoes(enemy_position)
+	var reveal_messages: Array[String] = player.award_attunement_xp(75)
+	var echo_messages: Array[String] = _trigger_item_echoes(enemy_position)
 	if not reveal_messages.is_empty():
 		message.text = reveal_messages[0]
 	elif not echo_messages.is_empty():
 		message.text = echo_messages[0]
 	if _alive_enemy_count() == 0:
 		player.identify_scrolls += 1
-		var clear_messages := player.award_attunement_xp(150)
+		var clear_messages: Array[String] = player.award_attunement_xp(150)
 		if not clear_messages.is_empty():
 			message.text = clear_messages[0]
 		_complete_current_room()
@@ -341,7 +341,7 @@ func _alive_enemy_count() -> int:
 	return count
 
 func _drop_loot_near_enemy(enemy_position: Vector2) -> void:
-	var item := item_database.random_loot_item()
+	var item: Dictionary = item_database.random_loot_item()
 	if item.is_empty():
 		return
 	var drop := LootDropScene.new()
@@ -386,7 +386,7 @@ func _complete_current_room() -> void:
 		message.text = "%s cleared. Press N to continue." % room["name"]
 
 func _drop_specific_item(item_id: String, drop_position: Vector2) -> void:
-	var item := item_database.get_item(item_id)
+	var item: Dictionary = item_database.get_item(item_id)
 	if item.is_empty():
 		return
 	var drop := LootDropScene.new()
@@ -557,7 +557,7 @@ func _on_death_echo_reclaimed() -> void:
 		return
 	death_echo_reclaimed = true
 	haunted_room = false
-	var messages := player.award_attunement_xp(125)
+	var messages: Array[String] = player.award_attunement_xp(125)
 	message.text = "Death Echo reclaimed. Attunement surges."
 	if not messages.is_empty():
 		message.text = messages[0]
@@ -596,7 +596,7 @@ func _tooltip(item: Dictionary) -> String:
 		stats.append("%s %+d" % [str(stat.get("stat", "")), int(stat.get("value", 0))])
 	for stat in item.get("revealedHiddenStats", []):
 		stats.append("%s %+d" % [str(stat.get("stat", "")), int(stat.get("value", 0))])
-	var hidden_slots := item.get("hiddenStats", []).size() - item.get("revealedHiddenStats", []).size()
+	var hidden_slots: int = item.get("hiddenStats", []).size() - item.get("revealedHiddenStats", []).size()
 	for _index in range(hidden_slots):
 		stats.append("????")
 	var soul_text := _soul_text(item)
