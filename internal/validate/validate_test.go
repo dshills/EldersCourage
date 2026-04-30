@@ -29,6 +29,56 @@ func TestDataAcceptsValidJSON(t *testing.T) {
 	}
 }
 
+func TestDataAcceptsPhase2Documents(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "phase2/items.json", `[
+		{"id":"old_sword","name":"Old Sword","type":"weapon","description":"A blade.","icon":"res://assets/items/sword.png","quantity":1,"stackable":false}
+	]`)
+	writeFile(t, root, "phase2/enemies.json", `[
+		{"id":"ash_road_scout","name":"Ash Road Scout","health":30,"maxHealth":30,"defeated":false}
+	]`)
+	writeFile(t, root, "phase2/quests.json", `[
+		{"id":"first_courage","title":"First Courage","description":"Recover the sword.","objectives":[{"id":"open_chest","label":"Open the chest","completed":false}],"completed":false}
+	]`)
+
+	if _, err := Data(root); err != nil {
+		t.Fatalf("Data returned error: %v", err)
+	}
+}
+
+func TestDataRejectsInvalidPhase2ItemType(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "phase2/items.json", `[
+		{"id":"bad_item","name":"Bad Item","type":"armor","description":"No.","icon":"res://bad.png","quantity":1,"stackable":false}
+	]`)
+
+	_, err := Data(root)
+	if err == nil {
+		t.Fatal("Data returned nil error for invalid phase2 item type")
+	}
+	if !strings.Contains(err.Error(), "invalid type") {
+		t.Fatalf("error = %q, want invalid type", err.Error())
+	}
+}
+
+func TestDataRejectsDuplicatePhase2QuestObjective(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "phase2/quests.json", `[
+		{"id":"first_courage","title":"First Courage","description":"Recover the sword.","objectives":[
+			{"id":"open_chest","label":"Open the chest","completed":false},
+			{"id":"open_chest","label":"Open again","completed":false}
+		],"completed":false}
+	]`)
+
+	_, err := Data(root)
+	if err == nil {
+		t.Fatal("Data returned nil error for duplicate phase2 objective")
+	}
+	if !strings.Contains(err.Error(), "duplicate objective") {
+		t.Fatalf("error = %q, want duplicate objective", err.Error())
+	}
+}
+
 func TestDataRejectsMalformedJSON(t *testing.T) {
 	root := t.TempDir()
 	writeFile(t, root, "items/broken.json", `{"id":`)

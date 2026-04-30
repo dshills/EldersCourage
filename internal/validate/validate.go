@@ -144,6 +144,15 @@ func collectRecordID(path string, record map[string]any, seenIDs map[string]stri
 
 func validateDocument(path string, value any, seenIDs map[string]string) error {
 	cleanPath := filepath.ToSlash(path)
+	if strings.Contains(cleanPath, "/phase2/items.json") {
+		return validatePhase2ItemDocument(path, value)
+	}
+	if strings.Contains(cleanPath, "/phase2/enemies.json") {
+		return validatePhase2EnemyDocument(path, value)
+	}
+	if strings.Contains(cleanPath, "/phase2/quests.json") {
+		return validatePhase2QuestDocument(path, value)
+	}
 	if strings.Contains(cleanPath, "/items/") {
 		return validateItemDocument(path, value)
 	}
@@ -167,6 +176,86 @@ func validateDocument(path string, value any, seenIDs map[string]string) error {
 	}
 	if strings.Contains(cleanPath, "/dungeons/") {
 		return validateDungeonDocument(path, value)
+	}
+	return nil
+}
+
+func validatePhase2ItemDocument(path string, value any) error {
+	for _, item := range records(value) {
+		for _, field := range []string{"id", "name", "type", "description", "icon"} {
+			if raw, ok := item[field].(string); !ok || strings.TrimSpace(raw) == "" {
+				return fmt.Errorf("%s: phase2 item missing string field %q", path, field)
+			}
+		}
+		itemType, _ := item["type"].(string)
+		if !validString(itemType, []string{"currency", "weapon", "consumable", "quest", "rune"}) {
+			return fmt.Errorf("%s: phase2 item %q has invalid type %q", path, item["id"], itemType)
+		}
+		if quantity, ok := item["quantity"].(float64); !ok || quantity < 0 {
+			return fmt.Errorf("%s: phase2 item %q quantity must be non-negative numeric", path, item["id"])
+		}
+		if _, ok := item["stackable"].(bool); !ok {
+			return fmt.Errorf("%s: phase2 item %q stackable must be boolean", path, item["id"])
+		}
+	}
+	return nil
+}
+
+func validatePhase2EnemyDocument(path string, value any) error {
+	for _, enemy := range records(value) {
+		for _, field := range []string{"id", "name"} {
+			if raw, ok := enemy[field].(string); !ok || strings.TrimSpace(raw) == "" {
+				return fmt.Errorf("%s: phase2 enemy missing string field %q", path, field)
+			}
+		}
+		for _, field := range []string{"health", "maxHealth"} {
+			if value, ok := enemy[field].(float64); !ok || value <= 0 {
+				return fmt.Errorf("%s: phase2 enemy %q field %q must be positive numeric", path, enemy["id"], field)
+			}
+		}
+		if enemy["defeated"] != nil {
+			if _, ok := enemy["defeated"].(bool); !ok {
+				return fmt.Errorf("%s: phase2 enemy %q defeated must be boolean", path, enemy["id"])
+			}
+		}
+	}
+	return nil
+}
+
+func validatePhase2QuestDocument(path string, value any) error {
+	for _, quest := range records(value) {
+		for _, field := range []string{"id", "title", "description"} {
+			if raw, ok := quest[field].(string); !ok || strings.TrimSpace(raw) == "" {
+				return fmt.Errorf("%s: phase2 quest missing string field %q", path, field)
+			}
+		}
+		objectives, ok := quest["objectives"].([]any)
+		if !ok || len(objectives) == 0 {
+			return fmt.Errorf("%s: phase2 quest %q requires objectives array", path, quest["id"])
+		}
+		seenObjectives := map[string]bool{}
+		for _, rawObjective := range objectives {
+			objective, ok := rawObjective.(map[string]any)
+			if !ok {
+				return fmt.Errorf("%s: phase2 quest %q objective must be an object", path, quest["id"])
+			}
+			for _, field := range []string{"id", "label"} {
+				if raw, ok := objective[field].(string); !ok || strings.TrimSpace(raw) == "" {
+					return fmt.Errorf("%s: phase2 quest %q objective missing string field %q", path, quest["id"], field)
+				}
+			}
+			id := objective["id"].(string)
+			if seenObjectives[id] {
+				return fmt.Errorf("%s: phase2 quest %q has duplicate objective %q", path, quest["id"], id)
+			}
+			seenObjectives[id] = true
+			if _, ok := objective["completed"].(bool); !ok {
+				return fmt.Errorf("%s: phase2 quest %q objective %q completed must be boolean", path, quest["id"], id)
+			}
+		}
+		if _, ok := quest["completed"].(bool); !ok {
+			return fmt.Errorf("%s: phase2 quest %q completed must be boolean", path, quest["id"])
+		}
 	}
 	return nil
 }

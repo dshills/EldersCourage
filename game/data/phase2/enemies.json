@@ -1,0 +1,9 @@
+[
+  {
+    "id": "ash_road_scout",
+    "name": "Ash Road Scout",
+    "health": 30,
+    "maxHealth": 30,
+    "defeated": false
+  }
+]

@@ -1,0 +1,38 @@
+[
+  {
+    "id": "gold_coins",
+    "name": "Gold Coins",
+    "type": "currency",
+    "description": "A small purse of road-worn coins.",
+    "icon": "res://assets/items/gold_coins.png",
+    "quantity": 0,
+    "stackable": true
+  },
+  {
+    "id": "old_sword",
+    "name": "Old Sword",
+    "type": "weapon",
+    "description": "A nicked blade from the abandoned chest. It still holds an edge.",
+    "icon": "res://assets/items/sword.png",
+    "quantity": 1,
+    "stackable": false
+  },
+  {
+    "id": "blue_potion",
+    "name": "Blue Potion",
+    "type": "consumable",
+    "description": "A cool draught that hums with stored mana.",
+    "icon": "res://assets/items/potion_blue.png",
+    "quantity": 1,
+    "stackable": true
+  },
+  {
+    "id": "fire_rune",
+    "name": "Fire Rune",
+    "type": "rune",
+    "description": "A bright ember sigil for later mysteries.",
+    "icon": "res://assets/items/fire_rune.png",
+    "quantity": 1,
+    "stackable": true
+  }
+]

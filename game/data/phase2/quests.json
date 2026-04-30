@@ -1,0 +1,25 @@
+[
+  {
+    "id": "first_courage",
+    "title": "First Courage",
+    "description": "Recover the old sword from the abandoned chest and defeat the scout near the elder road.",
+    "objectives": [
+      {
+        "id": "open_chest",
+        "label": "Open the abandoned chest",
+        "completed": false
+      },
+      {
+        "id": "recover_sword",
+        "label": "Recover the old sword",
+        "completed": false
+      },
+      {
+        "id": "defeat_scout",
+        "label": "Defeat the Ash Road Scout",
+        "completed": false
+      }
+    ],
+    "completed": false
+  }
+]
