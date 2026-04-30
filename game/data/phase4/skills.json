@@ -1,0 +1,97 @@
+[
+  {
+    "id": "guarded_strike",
+    "classId": "roadwarden",
+    "name": "Guarded Strike",
+    "description": "A disciplined strike that guards against retaliation.",
+    "icon": "res://assets/icons/items/weapon_generic.png",
+    "targetType": "enemy",
+    "resource": "mana",
+    "resourceCost": 5,
+    "cooldownTurns": 0,
+    "effects": [
+      { "type": "damage", "amount": 8, "scalingStat": "strength", "scalingMultiplier": 1.2 },
+      { "type": "buff", "amount": 2, "stat": "defense", "durationTurns": 1 }
+    ],
+    "messageTemplate": "You drive forward with a guarded strike, dealing {damage} damage."
+  },
+  {
+    "id": "shield_bash",
+    "classId": "roadwarden",
+    "name": "Shield Bash",
+    "description": "A staggering shield blow that weakens the next enemy strike.",
+    "icon": "res://assets/icons/items/armor_generic.png",
+    "targetType": "enemy",
+    "resource": "mana",
+    "resourceCost": 8,
+    "cooldownTurns": 2,
+    "effects": [
+      { "type": "damage", "amount": 5, "scalingStat": "strength", "scalingMultiplier": 0.8 },
+      { "type": "debuff", "amount": -2, "stat": "attack", "durationTurns": 1 }
+    ],
+    "messageTemplate": "Your shield crashes into the enemy, staggering it for {damage} damage."
+  },
+  {
+    "id": "ember_bolt",
+    "classId": "ember_sage",
+    "name": "Ember Bolt",
+    "description": "A hard-burning bolt that ignores armor for now.",
+    "icon": "res://assets/items/fire_rune.png",
+    "targetType": "enemy",
+    "resource": "mana",
+    "resourceCost": 10,
+    "cooldownTurns": 0,
+    "ignoreDefense": true,
+    "effects": [
+      { "type": "damage", "amount": 10, "scalingStat": "spellPower", "scalingMultiplier": 1.5 }
+    ],
+    "messageTemplate": "An ember bolt tears through the air, burning the enemy for {damage} damage."
+  },
+  {
+    "id": "kindle",
+    "classId": "ember_sage",
+    "name": "Kindle",
+    "description": "Recover mana by stirring old flame.",
+    "icon": "res://assets/items/fire_rune.png",
+    "targetType": "self",
+    "resource": "none",
+    "resourceCost": 0,
+    "cooldownTurns": 3,
+    "effects": [
+      { "type": "restore_mana", "amount": 15, "scalingStat": "spellPower", "scalingMultiplier": 0.5 }
+    ],
+    "messageTemplate": "You kindle the old flame and recover {amount} mana."
+  },
+  {
+    "id": "piercing_shot",
+    "classId": "gravebound_scout",
+    "name": "Piercing Shot",
+    "description": "A precise shot that ignores a point of defense.",
+    "icon": "res://assets/icons/items/weapon_generic.png",
+    "targetType": "enemy",
+    "resource": "mana",
+    "resourceCost": 7,
+    "cooldownTurns": 1,
+    "defensePierce": 1,
+    "effects": [
+      { "type": "damage", "amount": 7, "scalingStat": "strength", "scalingMultiplier": 1.0 }
+    ],
+    "messageTemplate": "Your shot finds a gap in the enemy's guard for {damage} damage."
+  },
+  {
+    "id": "grave_touch",
+    "classId": "gravebound_scout",
+    "name": "Grave Touch",
+    "description": "Drain life with cold grave power.",
+    "icon": "res://assets/icons/items/ring_accursed.png",
+    "targetType": "enemy",
+    "resource": "mana",
+    "resourceCost": 12,
+    "cooldownTurns": 2,
+    "effects": [
+      { "type": "damage", "amount": 6, "scalingStat": "spellPower", "scalingMultiplier": 1.0 },
+      { "type": "heal", "amount": 5, "scalingStat": "spellPower", "scalingMultiplier": 0.5 }
+    ],
+    "messageTemplate": "Grave-cold power drains the enemy for {damage} damage and restores {healing} health."
+  }
+]

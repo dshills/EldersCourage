@@ -1,0 +1,35 @@
+[
+  {
+    "id": "road_oaths",
+    "classId": "roadwarden",
+    "name": "Road Oaths",
+    "nodes": [
+      { "id": "iron_posture", "classId": "roadwarden", "name": "Iron Posture", "description": "Each rank grants +1 defense.", "maxRank": 2, "requiredLevel": 2, "prerequisiteTalentIds": [], "effects": [{ "type": "stat_bonus", "stat": "defense", "amount": 1 }] },
+      { "id": "veteran_arm", "classId": "roadwarden", "name": "Veteran Arm", "description": "Each rank grants +1 strength.", "maxRank": 2, "requiredLevel": 2, "prerequisiteTalentIds": [], "effects": [{ "type": "stat_bonus", "stat": "strength", "amount": 1 }] },
+      { "id": "stalwart_guard", "classId": "roadwarden", "name": "Stalwart Guard", "description": "Guarded Strike costs 2 less mana.", "maxRank": 1, "requiredLevel": 3, "prerequisiteTalentIds": ["iron_posture"], "effects": [{ "type": "resource_cost_reduction", "skillId": "guarded_strike", "amount": 2 }] },
+      { "id": "crushing_bash", "classId": "roadwarden", "name": "Crushing Bash", "description": "Shield Bash deals +3 damage.", "maxRank": 1, "requiredLevel": 3, "prerequisiteTalentIds": ["veteran_arm"], "effects": [{ "type": "skill_damage_bonus", "skillId": "shield_bash", "amount": 3 }] }
+    ]
+  },
+  {
+    "id": "ember_memory",
+    "classId": "ember_sage",
+    "name": "Ember Memory",
+    "nodes": [
+      { "id": "living_flame", "classId": "ember_sage", "name": "Living Flame", "description": "Each rank grants +1 spell power.", "maxRank": 2, "requiredLevel": 2, "prerequisiteTalentIds": [], "effects": [{ "type": "stat_bonus", "stat": "spellPower", "amount": 1 }] },
+      { "id": "deep_breath", "classId": "ember_sage", "name": "Deep Breath", "description": "Each rank grants +5 max mana.", "maxRank": 2, "requiredLevel": 2, "prerequisiteTalentIds": [], "effects": [{ "type": "stat_bonus", "stat": "maxManaBonus", "amount": 5 }] },
+      { "id": "focused_ember", "classId": "ember_sage", "name": "Focused Ember", "description": "Ember Bolt deals +4 damage.", "maxRank": 1, "requiredLevel": 3, "prerequisiteTalentIds": ["living_flame"], "effects": [{ "type": "skill_damage_bonus", "skillId": "ember_bolt", "amount": 4 }] },
+      { "id": "efficient_kindle", "classId": "ember_sage", "name": "Efficient Kindle", "description": "Kindle cooldown reduced by 1 turn.", "maxRank": 1, "requiredLevel": 3, "prerequisiteTalentIds": ["deep_breath"], "effects": [{ "type": "cooldown_reduction", "skillId": "kindle", "amount": 1 }] }
+    ]
+  },
+  {
+    "id": "grave_tracks",
+    "classId": "gravebound_scout",
+    "name": "Grave Tracks",
+    "nodes": [
+      { "id": "quiet_step", "classId": "gravebound_scout", "name": "Quiet Step", "description": "Each rank grants +1 defense.", "maxRank": 2, "requiredLevel": 2, "prerequisiteTalentIds": [], "effects": [{ "type": "stat_bonus", "stat": "defense", "amount": 1 }] },
+      { "id": "killing_angle", "classId": "gravebound_scout", "name": "Killing Angle", "description": "Each rank grants +1 strength.", "maxRank": 2, "requiredLevel": 2, "prerequisiteTalentIds": [], "effects": [{ "type": "stat_bonus", "stat": "strength", "amount": 1 }] },
+      { "id": "barbed_shot", "classId": "gravebound_scout", "name": "Barbed Shot", "description": "Piercing Shot deals +3 damage.", "maxRank": 1, "requiredLevel": 3, "prerequisiteTalentIds": ["killing_angle"], "effects": [{ "type": "skill_damage_bonus", "skillId": "piercing_shot", "amount": 3 }] },
+      { "id": "hungry_grave", "classId": "gravebound_scout", "name": "Hungry Grave", "description": "Grave Touch deals +2 damage.", "maxRank": 1, "requiredLevel": 3, "prerequisiteTalentIds": ["quiet_step"], "effects": [{ "type": "skill_damage_bonus", "skillId": "grave_touch", "amount": 2 }] }
+    ]
+  }
+]

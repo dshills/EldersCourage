@@ -1,0 +1,50 @@
+[
+  {
+    "id": "roadwarden",
+    "name": "Roadwarden",
+    "subtitle": "Shield of the Elder Road",
+    "description": "A hardened frontier guardian who survives through armor, discipline, and heavy strikes.",
+    "portrait": "res://assets/portraits/elder_warrior.png",
+    "baseStats": { "strength": 4, "defense": 3, "spellPower": 0, "maxHealthBonus": 10, "maxManaBonus": 0 },
+    "startingHealth": 120,
+    "startingMana": 25,
+    "startingGold": 5,
+    "startingItemIds": ["phase3_old_sword", "phase3_roadwarden_vest", "phase3_minor_health_potion"],
+    "startingSkillIds": ["guarded_strike", "shield_bash"],
+    "talentTreeId": "road_oaths",
+    "startMessage": "You tighten the straps of your road-worn armor. The Elder Road will hold.",
+    "levelUpMessage": "Your oath hardens. You reached level {level}."
+  },
+  {
+    "id": "ember_sage",
+    "name": "Ember Sage",
+    "subtitle": "Keeper of the First Flame",
+    "description": "A fragile scholar of old fire magic who spends mana to deal high damage and manipulate battlefield pressure.",
+    "portrait": "res://assets/portraits/elder_hooded.png",
+    "baseStats": { "strength": 1, "defense": 1, "spellPower": 5, "maxHealthBonus": -5, "maxManaBonus": 25 },
+    "startingHealth": 85,
+    "startingMana": 75,
+    "startingGold": 8,
+    "startingItemIds": ["phase4_ember_staff", "phase3_cracked_ember_charm", "phase3_minor_health_potion"],
+    "startingSkillIds": ["ember_bolt", "kindle"],
+    "talentTreeId": "ember_memory",
+    "startMessage": "A coal-bright ember stirs in your palm. Old fire remembers you.",
+    "levelUpMessage": "The flame within you grows brighter. You reached level {level}."
+  },
+  {
+    "id": "gravebound_scout",
+    "name": "Gravebound Scout",
+    "subtitle": "Listener at the Edge of Death",
+    "description": "A nimble hunter touched by old grave magic, relying on precision, evasion, and life-draining strikes.",
+    "portrait": "res://assets/portraits/elf_scout.png",
+    "baseStats": { "strength": 3, "defense": 1, "spellPower": 2, "maxHealthBonus": 0, "maxManaBonus": 10 },
+    "startingHealth": 100,
+    "startingMana": 50,
+    "startingGold": 10,
+    "startingItemIds": ["phase4_scout_knife", "phase4_travelers_cloak", "phase3_minor_health_potion"],
+    "startingSkillIds": ["piercing_shot", "grave_touch"],
+    "talentTreeId": "grave_tracks",
+    "startMessage": "The dead are quiet today. That usually means they are listening.",
+    "levelUpMessage": "A whisper from below guides your hand. You reached level {level}."
+  }
+]

@@ -1,0 +1,38 @@
+[
+  {
+    "id": "phase4_ember_staff",
+    "name": "Ember Staff",
+    "type": "weapon",
+    "description": "A charred staff that brightens when old fire is near.",
+    "icon": "res://assets/items/fire_rune.png",
+    "quantity": 1,
+    "stackable": false,
+    "equippable": true,
+    "equipmentSlot": "weapon",
+    "stats": { "spellPower": 2, "maxManaBonus": 5 }
+  },
+  {
+    "id": "phase4_scout_knife",
+    "name": "Scout Knife",
+    "type": "weapon",
+    "description": "A narrow blade made for quiet work.",
+    "icon": "res://assets/icons/items/weapon_generic.png",
+    "quantity": 1,
+    "stackable": false,
+    "equippable": true,
+    "equipmentSlot": "weapon",
+    "stats": { "strength": 1, "spellPower": 1 }
+  },
+  {
+    "id": "phase4_travelers_cloak",
+    "name": "Traveler's Cloak",
+    "type": "armor",
+    "description": "A weathered cloak sewn with grave-thread.",
+    "icon": "res://assets/icons/items/armor_generic.png",
+    "quantity": 1,
+    "stackable": false,
+    "equippable": true,
+    "equipmentSlot": "armor",
+    "stats": { "defense": 1, "maxManaBonus": 5 }
+  }
+]

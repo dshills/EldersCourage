@@ -174,6 +174,18 @@ func validateDocument(path string, value any, seenIDs map[string]string) error {
 	if strings.Contains(cleanPath, "/phase3/zone_") {
 		return validatePhase3ZoneDocument(path, value)
 	}
+	if strings.Contains(cleanPath, "/phase4/starter_items.json") {
+		return validatePhase3ItemDocument(path, value)
+	}
+	if strings.Contains(cleanPath, "/phase4/classes.json") {
+		return validatePhase4ClassDocument(path, value)
+	}
+	if strings.Contains(cleanPath, "/phase4/skills.json") {
+		return validatePhase4SkillDocument(path, value)
+	}
+	if strings.Contains(cleanPath, "/phase4/talents.json") {
+		return validatePhase4TalentDocument(path, value)
+	}
 	if strings.Contains(cleanPath, "/items/") {
 		return validateItemDocument(path, value)
 	}
@@ -197,6 +209,167 @@ func validateDocument(path string, value any, seenIDs map[string]string) error {
 	}
 	if strings.Contains(cleanPath, "/dungeons/") {
 		return validateDungeonDocument(path, value)
+	}
+	return nil
+}
+
+func validatePhase4ClassDocument(path string, value any) error {
+	for _, class := range records(value) {
+		for _, field := range []string{"id", "name", "subtitle", "description", "portrait", "talentTreeId", "startMessage", "levelUpMessage"} {
+			if raw, ok := class[field].(string); !ok || strings.TrimSpace(raw) == "" {
+				return fmt.Errorf("%s: phase4 class missing string field %q", path, field)
+			}
+		}
+		classID, _ := class["id"].(string)
+		if !validString(classID, []string{"roadwarden", "ember_sage", "gravebound_scout"}) {
+			return fmt.Errorf("%s: phase4 class has invalid id %q", path, classID)
+		}
+		stats, ok := class["baseStats"].(map[string]any)
+		if !ok {
+			return fmt.Errorf("%s: phase4 class %q requires baseStats", path, classID)
+		}
+		if err := validatePhase3Stats(path, classID, stats); err != nil {
+			return err
+		}
+		for _, field := range []string{"startingHealth", "startingMana", "startingGold"} {
+			if value, ok := class[field].(float64); !ok || value < 0 {
+				return fmt.Errorf("%s: phase4 class %q field %q must be non-negative numeric", path, classID, field)
+			}
+		}
+		for _, field := range []string{"startingItemIds", "startingSkillIds"} {
+			values, ok := class[field].([]any)
+			if !ok || len(values) == 0 {
+				return fmt.Errorf("%s: phase4 class %q requires %s", path, classID, field)
+			}
+			for _, rawValue := range values {
+				if value, ok := rawValue.(string); !ok || strings.TrimSpace(value) == "" {
+					return fmt.Errorf("%s: phase4 class %q has invalid %s entry", path, classID, field)
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func validatePhase4SkillDocument(path string, value any) error {
+	for _, skill := range records(value) {
+		for _, field := range []string{"id", "classId", "name", "description", "icon", "targetType", "resource", "messageTemplate"} {
+			if raw, ok := skill[field].(string); !ok || strings.TrimSpace(raw) == "" {
+				return fmt.Errorf("%s: phase4 skill missing string field %q", path, field)
+			}
+		}
+		classID, _ := skill["classId"].(string)
+		if !validString(classID, []string{"roadwarden", "ember_sage", "gravebound_scout"}) {
+			return fmt.Errorf("%s: phase4 skill %q has invalid classId %q", path, skill["id"], classID)
+		}
+		targetType, _ := skill["targetType"].(string)
+		if !validString(targetType, []string{"enemy", "self"}) {
+			return fmt.Errorf("%s: phase4 skill %q has invalid targetType %q", path, skill["id"], targetType)
+		}
+		resource, _ := skill["resource"].(string)
+		if !validString(resource, []string{"mana", "health", "none"}) {
+			return fmt.Errorf("%s: phase4 skill %q has invalid resource %q", path, skill["id"], resource)
+		}
+		for _, field := range []string{"resourceCost", "cooldownTurns"} {
+			if value, ok := skill[field].(float64); !ok || value < 0 {
+				return fmt.Errorf("%s: phase4 skill %q field %q must be non-negative numeric", path, skill["id"], field)
+			}
+		}
+		effects, ok := skill["effects"].([]any)
+		if !ok || len(effects) == 0 {
+			return fmt.Errorf("%s: phase4 skill %q requires effects", path, skill["id"])
+		}
+		for _, rawEffect := range effects {
+			effect, ok := rawEffect.(map[string]any)
+			if !ok {
+				return fmt.Errorf("%s: phase4 skill %q effect must be object", path, skill["id"])
+			}
+			effectType, _ := effect["type"].(string)
+			if !validString(effectType, []string{"damage", "heal", "restore_mana", "buff", "debuff"}) {
+				return fmt.Errorf("%s: phase4 skill %q has invalid effect type %q", path, skill["id"], effectType)
+			}
+			if amount, ok := effect["amount"].(float64); !ok || amount == 0 {
+				return fmt.Errorf("%s: phase4 skill %q effect amount must be non-zero numeric", path, skill["id"])
+			}
+			if stat, ok := effect["scalingStat"].(string); ok && stat != "" {
+				if !validString(stat, []string{"strength", "defense", "spellPower", "maxHealthBonus", "maxManaBonus"}) {
+					return fmt.Errorf("%s: phase4 skill %q has invalid scalingStat %q", path, skill["id"], stat)
+				}
+			}
+			if _, ok := effect["scalingMultiplier"]; ok {
+				if _, ok := effect["scalingMultiplier"].(float64); !ok {
+					return fmt.Errorf("%s: phase4 skill %q scalingMultiplier must be numeric", path, skill["id"])
+				}
+			}
+			if effectType == "buff" || effectType == "debuff" {
+				stat, ok := effect["stat"].(string)
+				if !ok || !validString(stat, []string{"strength", "defense", "spellPower", "attack"}) {
+					return fmt.Errorf("%s: phase4 skill %q modifier effect requires valid stat", path, skill["id"])
+				}
+				if turns, ok := effect["durationTurns"].(float64); !ok || turns <= 0 {
+					return fmt.Errorf("%s: phase4 skill %q modifier effect requires positive durationTurns", path, skill["id"])
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func validatePhase4TalentDocument(path string, value any) error {
+	for _, tree := range records(value) {
+		for _, field := range []string{"id", "classId", "name"} {
+			if raw, ok := tree[field].(string); !ok || strings.TrimSpace(raw) == "" {
+				return fmt.Errorf("%s: phase4 talent tree missing string field %q", path, field)
+			}
+		}
+		nodes, ok := tree["nodes"].([]any)
+		if !ok || len(nodes) == 0 {
+			return fmt.Errorf("%s: phase4 talent tree %q requires nodes", path, tree["id"])
+		}
+		for _, rawNode := range nodes {
+			node, ok := rawNode.(map[string]any)
+			if !ok {
+				return fmt.Errorf("%s: phase4 talent node must be object", path)
+			}
+			for _, field := range []string{"id", "classId", "name", "description"} {
+				if raw, ok := node[field].(string); !ok || strings.TrimSpace(raw) == "" {
+					return fmt.Errorf("%s: phase4 talent node missing string field %q", path, field)
+				}
+			}
+			for _, field := range []string{"maxRank", "requiredLevel"} {
+				if value, ok := node[field].(float64); !ok || value <= 0 {
+					return fmt.Errorf("%s: phase4 talent %q field %q must be positive numeric", path, node["id"], field)
+				}
+			}
+			if _, ok := node["prerequisiteTalentIds"].([]any); !ok {
+				return fmt.Errorf("%s: phase4 talent %q requires prerequisiteTalentIds array", path, node["id"])
+			}
+			effects, ok := node["effects"].([]any)
+			if !ok || len(effects) == 0 {
+				return fmt.Errorf("%s: phase4 talent %q requires effects", path, node["id"])
+			}
+			for _, rawEffect := range effects {
+				effect, ok := rawEffect.(map[string]any)
+				if !ok {
+					return fmt.Errorf("%s: phase4 talent %q effect must be object", path, node["id"])
+				}
+				effectType, _ := effect["type"].(string)
+				if !validString(effectType, []string{"stat_bonus", "skill_damage_bonus", "resource_cost_reduction", "cooldown_reduction"}) {
+					return fmt.Errorf("%s: phase4 talent %q has invalid effect type %q", path, node["id"], effectType)
+				}
+				if _, ok := effect["amount"].(float64); !ok {
+					return fmt.Errorf("%s: phase4 talent %q effect amount must be numeric", path, node["id"])
+				}
+				if effectType == "stat_bonus" {
+					stat, ok := effect["stat"].(string)
+					if !ok || !validString(stat, []string{"strength", "defense", "spellPower", "maxHealthBonus", "maxManaBonus"}) {
+						return fmt.Errorf("%s: phase4 talent %q stat_bonus requires valid stat", path, node["id"])
+					}
+				} else if raw, ok := effect["skillId"].(string); !ok || strings.TrimSpace(raw) == "" {
+					return fmt.Errorf("%s: phase4 talent %q effect requires skillId", path, node["id"])
+				}
+			}
+		}
 	}
 	return nil
 }
@@ -893,6 +1066,11 @@ func validateReferences(path string, value any, seenIDs map[string]string, itemT
 			return err
 		}
 	}
+	if strings.Contains(cleanPath, "/phase4/") {
+		if err := validatePhase4References(path, value, seenIDs); err != nil {
+			return err
+		}
+	}
 	if strings.Contains(cleanPath, "/items/") {
 		for _, item := range records(value) {
 			if curse, ok := item["curse"].(map[string]any); ok {
@@ -964,6 +1142,66 @@ func validateReferences(path string, value any, seenIDs map[string]string, itemT
 					}
 					if !modifierIDs[modifierID] {
 						return fmt.Errorf("%s: dungeon room %q references unknown modifier %q", path, room["id"], modifierID)
+					}
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func validatePhase4References(path string, value any, seenIDs map[string]string) error {
+	cleanPath := filepath.ToSlash(path)
+	if strings.Contains(cleanPath, "/phase4/classes.json") {
+		for _, class := range records(value) {
+			for _, rawItemID := range asArray(class["startingItemIds"]) {
+				itemID, _ := rawItemID.(string)
+				if _, exists := seenIDs[itemID]; !exists {
+					return fmt.Errorf("%s: phase4 class %q references unknown item %q", path, class["id"], itemID)
+				}
+			}
+			for _, rawSkillID := range asArray(class["startingSkillIds"]) {
+				skillID, _ := rawSkillID.(string)
+				if _, exists := seenIDs[skillID]; !exists {
+					return fmt.Errorf("%s: phase4 class %q references unknown skill %q", path, class["id"], skillID)
+				}
+			}
+			treeID, _ := class["talentTreeId"].(string)
+			if _, exists := seenIDs[treeID]; !exists {
+				return fmt.Errorf("%s: phase4 class %q references unknown talent tree %q", path, class["id"], treeID)
+			}
+		}
+	}
+	if strings.Contains(cleanPath, "/phase4/talents.json") {
+		for _, tree := range records(value) {
+			nodeIDs := map[string]bool{}
+			for _, rawNode := range asArray(tree["nodes"]) {
+				if node, ok := rawNode.(map[string]any); ok {
+					if id, ok := node["id"].(string); ok {
+						nodeIDs[id] = true
+					}
+				}
+			}
+			for _, rawNode := range asArray(tree["nodes"]) {
+				node, ok := rawNode.(map[string]any)
+				if !ok {
+					continue
+				}
+				for _, rawPrereq := range asArray(node["prerequisiteTalentIds"]) {
+					prereq, _ := rawPrereq.(string)
+					if !nodeIDs[prereq] {
+						return fmt.Errorf("%s: phase4 talent %q references unknown prerequisite %q", path, node["id"], prereq)
+					}
+				}
+				for _, rawEffect := range asArray(node["effects"]) {
+					effect, ok := rawEffect.(map[string]any)
+					if !ok {
+						continue
+					}
+					if skillID, ok := effect["skillId"].(string); ok && skillID != "" {
+						if _, exists := seenIDs[skillID]; !exists {
+							return fmt.Errorf("%s: phase4 talent %q references unknown skill %q", path, node["id"], skillID)
+						}
 					}
 				}
 			}

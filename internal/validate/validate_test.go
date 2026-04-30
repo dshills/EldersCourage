@@ -144,6 +144,67 @@ func TestDataRejectsPhase3UnknownLootItemReference(t *testing.T) {
 	}
 }
 
+func TestDataAcceptsPhase4Documents(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "phase4/starter_items.json", `[
+		{"id":"phase4_staff","name":"Staff","type":"weapon","description":"A staff.","icon":"res://staff.png","quantity":1,"stackable":false,"equippable":true,"equipmentSlot":"weapon","stats":{"spellPower":2}}
+	]`)
+	writeFile(t, root, "phase4/skills.json", `[
+		{"id":"ember_bolt","classId":"ember_sage","name":"Ember Bolt","description":"Burn.","icon":"res://bolt.png","targetType":"enemy","resource":"mana","resourceCost":10,"cooldownTurns":0,"effects":[{"type":"damage","amount":10,"scalingStat":"spellPower","scalingMultiplier":1.5}],"messageTemplate":"Burn {damage}."}
+	]`)
+	writeFile(t, root, "phase4/talents.json", `[
+		{"id":"ember_memory","classId":"ember_sage","name":"Ember Memory","nodes":[
+			{"id":"living_flame","classId":"ember_sage","name":"Living Flame","description":"Power.","maxRank":2,"requiredLevel":2,"prerequisiteTalentIds":[],"effects":[{"type":"stat_bonus","stat":"spellPower","amount":1}]},
+			{"id":"focused_ember","classId":"ember_sage","name":"Focused Ember","description":"Bolt.","maxRank":1,"requiredLevel":3,"prerequisiteTalentIds":["living_flame"],"effects":[{"type":"skill_damage_bonus","skillId":"ember_bolt","amount":4}]}
+		]}
+	]`)
+	writeFile(t, root, "phase4/classes.json", `[
+		{"id":"ember_sage","name":"Ember Sage","subtitle":"Keeper","description":"Fire.","portrait":"res://portrait.png","baseStats":{"strength":1,"defense":1,"spellPower":5,"maxHealthBonus":-5,"maxManaBonus":25},"startingHealth":85,"startingMana":75,"startingGold":8,"startingItemIds":["phase4_staff"],"startingSkillIds":["ember_bolt"],"talentTreeId":"ember_memory","startMessage":"Start.","levelUpMessage":"Level {level}."}
+	]`)
+
+	if _, err := Data(root); err != nil {
+		t.Fatalf("Data returned error: %v", err)
+	}
+}
+
+func TestDataRejectsPhase4ClassUnknownSkill(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "phase4/starter_items.json", `[
+		{"id":"phase4_staff","name":"Staff","type":"weapon","description":"A staff.","icon":"res://staff.png","quantity":1,"stackable":false,"equippable":true,"equipmentSlot":"weapon","stats":{"spellPower":2}}
+	]`)
+	writeFile(t, root, "phase4/talents.json", `[
+		{"id":"ember_memory","classId":"ember_sage","name":"Ember Memory","nodes":[{"id":"living_flame","classId":"ember_sage","name":"Living Flame","description":"Power.","maxRank":2,"requiredLevel":2,"prerequisiteTalentIds":[],"effects":[{"type":"stat_bonus","stat":"spellPower","amount":1}]}]}
+	]`)
+	writeFile(t, root, "phase4/classes.json", `[
+		{"id":"ember_sage","name":"Ember Sage","subtitle":"Keeper","description":"Fire.","portrait":"res://portrait.png","baseStats":{"strength":1,"defense":1,"spellPower":5,"maxHealthBonus":-5,"maxManaBonus":25},"startingHealth":85,"startingMana":75,"startingGold":8,"startingItemIds":["phase4_staff"],"startingSkillIds":["missing_skill"],"talentTreeId":"ember_memory","startMessage":"Start.","levelUpMessage":"Level {level}."}
+	]`)
+
+	_, err := Data(root)
+	if err == nil {
+		t.Fatal("Data returned nil error for unknown phase4 skill")
+	}
+	if !strings.Contains(err.Error(), "unknown skill") {
+		t.Fatalf("error = %q, want unknown skill", err.Error())
+	}
+}
+
+func TestDataRejectsPhase4TalentUnknownPrerequisite(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "phase4/talents.json", `[
+		{"id":"road_oaths","classId":"roadwarden","name":"Road Oaths","nodes":[
+			{"id":"stalwart_guard","classId":"roadwarden","name":"Stalwart Guard","description":"Guard.","maxRank":1,"requiredLevel":3,"prerequisiteTalentIds":["missing"],"effects":[{"type":"stat_bonus","stat":"defense","amount":1}]}
+		]}
+	]`)
+
+	_, err := Data(root)
+	if err == nil {
+		t.Fatal("Data returned nil error for unknown phase4 prerequisite")
+	}
+	if !strings.Contains(err.Error(), "unknown prerequisite") {
+		t.Fatalf("error = %q, want unknown prerequisite", err.Error())
+	}
+}
+
 func TestDataRejectsMalformedJSON(t *testing.T) {
 	root := t.TempDir()
 	writeFile(t, root, "items/broken.json", `{"id":`)
