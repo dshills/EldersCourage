@@ -1,13 +1,14 @@
 # EldersCourage
 
-EldersCourage is a playable dark fantasy RPG prototype. The project currently has four implemented slices:
+EldersCourage is a playable dark fantasy RPG prototype. The project currently has five implemented slices:
 
+- Phase 5 item identity: item instances, unidentified and partially identified equipment, Identify Scroll target mode, hidden/locked/revealed properties, attunement progress, level-gated reveals, cursed properties, and discovery messages.
 - Phase 4 build identity: class selection, class-specific starting gear/stats, active skills, mana costs, cooldowns, temporary combat modifiers, talent points, and compact passive talent trees.
 - Phase 3 Elder Road Outskirts: small explorable map, movement, containers, shrine, equipment, multiple encounters, enemy retaliation, XP, level-up, consumables, quest chain, and zone completion.
 - Phase 2 first-adventure loop: branded fantasy UI, chest interaction, loot pickup, inventory, enemy targeting, basic attack, quest tracker, and message log.
 - Phase 1 Ashen Catacombs dungeon: real-time combat, loot, equipment, cursed soul-rings, attunement, item echoes, death echoes, elite enemies, boss encounter, and completion reward.
 
-The Godot launch scene is currently `game/scenes/phase3/ElderRoadOutskirts.tscn`, now with a Phase 4 class-selection overlay before play begins.
+The Godot launch scene is currently `game/scenes/phase3/ElderRoadOutskirts.tscn`, now with class selection and Phase 5 item discovery layered into the Elder Road loop.
 
 ## Requirements
 
@@ -33,7 +34,7 @@ To load earlier slices directly:
 /Applications/Godot.app/Contents/MacOS/Godot --path game res://scenes/dungeons/AshenCatacombsRun.tscn
 ```
 
-## Phase 4 / Phase 3 Controls
+## Phase 5 / Phase 4 / Phase 3 Controls
 
 - Choose Roadwarden, Ember Sage, or Gravebound Scout, then click Begin Journey.
 - WASD or arrow keys: move one tile.
@@ -47,7 +48,9 @@ To load earlier slices directly:
 - Skill buttons: use known class skills.
 - Talents button: open or close the class talent panel.
 - Equip button: equip selected inventory item.
-- Use button: use selected consumable.
+- Use button: use selected consumable, or enter identify target mode when an Identify Scroll is selected.
+- During identify target mode, click a highlighted inventory item to identify it.
+- Cancel Identify button: leave identify target mode.
 - Restart button: reset after defeat or completion.
 
 ## Phase 2 Controls
@@ -105,13 +108,14 @@ go run ./cmd/elders acceptance-report ./game/data
 
 - `game/`: Godot project, scenes, scripts, UI placeholders, and JSON content.
 - `game/assets/`: approved atlas-derived UI, item, portrait, terrain, sprite, icon, tile, and VFX assets.
-- `game/data/`: data-driven Phase 1, Phase 2, Phase 3, and Phase 4 content.
+- `game/data/`: data-driven Phase 1, Phase 2, Phase 3, Phase 4, and Phase 5 content.
+- `game/data/phase5/`: discovery item definitions, hidden properties, attunement requirements, level-gated properties, and curses.
 - `game/data/phase4/`: class, skill, talent, and starter item definitions.
 - `game/data/phase3/`: Elder Road zone, items, enemies, loot tables, containers, shrine, and quest chain.
 - `game/data/phase2/`: first-adventure loop items, quest, and enemy definitions.
 - `game/scenes/phase3/`: Phase 3 launch scene.
 - `game/scenes/phase2/`: Phase 2 launch scene.
-- `game/scripts/phase3/`: Phase 3 state/actions and Elder Road UI shell script, extended with Phase 4 class/skill/talent runtime.
+- `game/scripts/phase3/`: Phase 3 state/actions and Elder Road UI shell script, extended with Phase 4 class/skill/talent runtime and Phase 5 item discovery.
 - `game/scripts/phase2/`: Phase 2 state/actions and UI shell script.
 - `cmd/elders/`: Go CLI entry point.
 - `internal/`: Go validation, loot generation, reporting, and Phase 2 state-helper tests.
@@ -120,6 +124,7 @@ go run ./cmd/elders acceptance-report ./game/data
 - `specs/phase2/`: Phase 2 spec, plan, and acceptance record.
 - `specs/phase3/`: Phase 3 spec, plan, and acceptance record.
 - `specs/phase4/`: Phase 4 spec, plan, and acceptance record.
+- `specs/phase5/`: Phase 5 spec, plan, and acceptance record.
 
 ## Specs and Status
 
@@ -131,6 +136,8 @@ go run ./cmd/elders acceptance-report ./game/data
 - Phase 3 acceptance: `specs/phase3/ACCEPTANCE.md`
 - Phase 4 plan: `specs/phase4/PLAN.md`
 - Phase 4 acceptance: `specs/phase4/ACCEPTANCE.md`
+- Phase 5 plan: `specs/phase5/PLAN.md`
+- Phase 5 acceptance: `specs/phase5/ACCEPTANCE.md`
 
 ## Current Limitations
 
