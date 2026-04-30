@@ -1,12 +1,13 @@
 # EldersCourage
 
-EldersCourage is a playable dark fantasy RPG prototype. The project currently has three implemented slices:
+EldersCourage is a playable dark fantasy RPG prototype. The project currently has four implemented slices:
 
+- Phase 4 build identity: class selection, class-specific starting gear/stats, active skills, mana costs, cooldowns, temporary combat modifiers, talent points, and compact passive talent trees.
 - Phase 3 Elder Road Outskirts: small explorable map, movement, containers, shrine, equipment, multiple encounters, enemy retaliation, XP, level-up, consumables, quest chain, and zone completion.
 - Phase 2 first-adventure loop: branded fantasy UI, chest interaction, loot pickup, inventory, enemy targeting, basic attack, quest tracker, and message log.
 - Phase 1 Ashen Catacombs dungeon: real-time combat, loot, equipment, cursed soul-rings, attunement, item echoes, death echoes, elite enemies, boss encounter, and completion reward.
 
-The Godot launch scene is currently `game/scenes/phase3/ElderRoadOutskirts.tscn`.
+The Godot launch scene is currently `game/scenes/phase3/ElderRoadOutskirts.tscn`, now with a Phase 4 class-selection overlay before play begins.
 
 ## Requirements
 
@@ -32,15 +33,19 @@ To load earlier slices directly:
 /Applications/Godot.app/Contents/MacOS/Godot --path game res://scenes/dungeons/AshenCatacombsRun.tscn
 ```
 
-## Phase 3 Controls
+## Phase 4 / Phase 3 Controls
 
+- Choose Roadwarden, Ember Sage, or Gravebound Scout, then click Begin Journey.
 - WASD or arrow keys: move one tile.
 - Click an adjacent map tile to move there.
 - `E`: interact with current tile.
 - `Space`: attack active enemy.
 - `I`: open or close inventory.
+- `Y`: open or close talents.
 - Open Container button: open a chest/cache on current tile.
 - Activate Shrine button: activate a shrine on current tile.
+- Skill buttons: use known class skills.
+- Talents button: open or close the class talent panel.
 - Equip button: equip selected inventory item.
 - Use button: use selected consumable.
 - Restart button: reset after defeat or completion.
@@ -100,12 +105,13 @@ go run ./cmd/elders acceptance-report ./game/data
 
 - `game/`: Godot project, scenes, scripts, UI placeholders, and JSON content.
 - `game/assets/`: approved atlas-derived UI, item, portrait, terrain, sprite, icon, tile, and VFX assets.
-- `game/data/`: data-driven Phase 1, Phase 2, and Phase 3 content.
+- `game/data/`: data-driven Phase 1, Phase 2, Phase 3, and Phase 4 content.
+- `game/data/phase4/`: class, skill, talent, and starter item definitions.
 - `game/data/phase3/`: Elder Road zone, items, enemies, loot tables, containers, shrine, and quest chain.
 - `game/data/phase2/`: first-adventure loop items, quest, and enemy definitions.
 - `game/scenes/phase3/`: Phase 3 launch scene.
 - `game/scenes/phase2/`: Phase 2 launch scene.
-- `game/scripts/phase3/`: Phase 3 state/actions and Elder Road UI shell script.
+- `game/scripts/phase3/`: Phase 3 state/actions and Elder Road UI shell script, extended with Phase 4 class/skill/talent runtime.
 - `game/scripts/phase2/`: Phase 2 state/actions and UI shell script.
 - `cmd/elders/`: Go CLI entry point.
 - `internal/`: Go validation, loot generation, reporting, and Phase 2 state-helper tests.
@@ -113,6 +119,7 @@ go run ./cmd/elders acceptance-report ./game/data
 - `specs/phase1/`: Phase 1 spec, plan, and acceptance record.
 - `specs/phase2/`: Phase 2 spec, plan, and acceptance record.
 - `specs/phase3/`: Phase 3 spec, plan, and acceptance record.
+- `specs/phase4/`: Phase 4 spec, plan, and acceptance record.
 
 ## Specs and Status
 
@@ -122,6 +129,8 @@ go run ./cmd/elders acceptance-report ./game/data
 - Phase 2 acceptance: `specs/phase2/ACCEPTANCE.md`
 - Phase 3 plan: `specs/phase3/Plan.md`
 - Phase 3 acceptance: `specs/phase3/ACCEPTANCE.md`
+- Phase 4 plan: `specs/phase4/PLAN.md`
+- Phase 4 acceptance: `specs/phase4/ACCEPTANCE.md`
 
 ## Current Limitations
 
