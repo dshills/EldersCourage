@@ -2,8 +2,10 @@ extends CharacterBody2D
 
 signal damage_dealt(amount: int, at_position: Vector2, color: Color)
 signal died
+signal basic_attack_hit(target: Node2D, amount: int, at_position: Vector2)
 
 const BellEffectScene := preload("res://scripts/bell_effect.gd")
+const PlayerTexture := preload("res://assets/sprites/player/gravebound_knight.png")
 const MOVE_SPEED := 260.0
 const ATTACK_RANGE := 76.0
 const CLEAVE_RANGE := 118.0
@@ -94,6 +96,7 @@ func _grave_strike() -> void:
 	target.take_damage(damage)
 	current_will = mini(max_will, current_will + 5)
 	damage_dealt.emit(damage, target.global_position + Vector2(0, -36), Color(0.95, 0.88, 0.65))
+	basic_attack_hit.emit(target, damage, target.global_position)
 
 func _blood_cleave() -> void:
 	cleave_timer = CLEAVE_COOLDOWN
@@ -146,7 +149,10 @@ func take_damage(amount: int) -> void:
 		return
 	if statuses.has("vulnerable"):
 		amount = int(roundi(float(amount) * (1.0 + statuses["vulnerable"]["value"])))
-	amount = maxi(1, amount - armor)
+	var effective_armor := armor
+	if statuses.has("bone_memory"):
+		effective_armor += int(statuses["bone_memory"]["value"])
+	amount = maxi(1, amount - effective_armor)
 	current_health = maxi(0, current_health - amount)
 	damage_dealt.emit(amount, global_position + Vector2(0, -42), Color(0.92, 0.12, 0.12))
 	if current_health <= 0:
@@ -216,6 +222,32 @@ func unequip(slot: String) -> void:
 	equipped[slot] = {}
 	_recalculate_stats()
 
+func use_first_consumable() -> String:
+	for index in range(inventory.size()):
+		var item: Dictionary = inventory[index]
+		if str(item.get("type", "")) == "consumable":
+			return _use_consumable_at(index)
+	return "No consumables in inventory."
+
+func _use_consumable_at(index: int) -> String:
+	var item: Dictionary = inventory[index]
+	var item_id := str(item.get("id", ""))
+	inventory.remove_at(index)
+	match item_id:
+		"consumable_minor_blood_flask":
+			var healed := mini(35, max_health - current_health)
+			current_health = mini(max_health, current_health + 35)
+			return "Used Minor Blood Flask. Restored %d health." % healed
+		"consumable_scroll_first_knowing":
+			for collection_name in ["equipped", "inventory"]:
+				var result := _identify_first_unknown(collection_name)
+				if result != "":
+					_recalculate_stats()
+					return result
+			return "The scroll found no hidden truth."
+		_:
+			return "Used %s." % item.get("name", "consumable")
+
 func _slot_for_item(item: Dictionary) -> String:
 	match str(item.get("type", "")):
 		"weapon":
@@ -252,6 +284,12 @@ func _stat_total(stat_name: String) -> int:
 		for stat in item.get("revealedHiddenStats", []):
 			if str(stat.get("stat", "")) == stat_name:
 				total += int(stat.get("value", 0))
+		if item.get("curseRevealed", false):
+			var curse = item.get("curse", null)
+			if curse != null:
+				for effect in curse.get("effects", []):
+					if str(effect.get("stat", "")) == stat_name:
+						total += int(effect.get("value", 0))
 	return total
 
 func award_attunement_xp(amount: int) -> Array[String]:
@@ -337,7 +375,7 @@ func _prepare_item_instance(item: Dictionary) -> Dictionary:
 	return instance
 
 func _attunement_level_for_xp(xp: int, max_level: int) -> int:
-	var thresholds := [100, 250, 500, 900, 1400]
+	var thresholds := [25, 75, 150]
 	var level := 0
 	for index in range(mini(max_level, thresholds.size())):
 		if xp >= thresholds[index]:
@@ -400,12 +438,13 @@ func _process_statuses(delta: float) -> void:
 				died.emit()
 
 func _speed_multiplier() -> float:
+	var multiplier := 1.0 + (float(_stat_total("move_speed")) / 100.0)
 	if statuses.has("chill"):
-		return 1.0 - statuses["chill"]["value"]
-	return 1.0
+		multiplier -= statuses["chill"]["value"]
+	return maxf(0.35, multiplier)
 
 func _draw() -> void:
-	draw_circle(Vector2.ZERO, 22, Color(0.25, 0.42, 0.78))
+	draw_texture_rect(PlayerTexture, Rect2(Vector2(-32, -32), Vector2(64, 64)), false)
 	draw_line(Vector2.ZERO, facing.normalized() * 34.0, Color(0.75, 0.85, 1.0), 4.0)
 	if invulnerable_timer > 0.0:
 		draw_arc(Vector2.ZERO, 30, 0.0, TAU, 32, Color(0.45, 0.75, 1.0), 3.0)
@@ -413,5 +452,7 @@ func _draw() -> void:
 		draw_arc(Vector2.ZERO, 34, 0.0, TAU, 24, Color(1.0, 0.45, 0.05), 2.0)
 	if statuses.has("chill"):
 		draw_arc(Vector2.ZERO, 38, 0.0, TAU, 24, Color(0.45, 0.85, 1.0), 2.0)
+	if statuses.has("bone_memory"):
+		draw_arc(Vector2.ZERO, 42, 0.0, TAU, 24, Color(0.78, 0.72, 0.58), 3.0)
 	if cleave_timer > 0.85:
 		draw_arc(Vector2.ZERO, CLEAVE_RANGE, -0.7, 0.7, 24, Color(0.9, 0.12, 0.12), 3.0)

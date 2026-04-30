@@ -30,6 +30,8 @@ Primary controls:
 - `R`: Bell of the Dead
 - `I`: inventory
 - `1`-`4`: equip inventory entries
+- `5`-`8`: unequip weapon, armor, ring 1, ring 2
+- `C`: use first consumable in inventory
 - `Z`: use Identify Scroll
 - `N`: advance to next cleared room
 - `F5`: save

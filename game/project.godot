@@ -6,7 +6,7 @@ config_version=5
 [application]
 
 config/name="EldersCourage Prototype"
-run/main_scene="res://scenes/combat_arena.tscn"
+run/main_scene="res://scenes/dungeons/AshenCatacombsRun.tscn"
 config/features=PackedStringArray("4.0")
 config/icon=""
 

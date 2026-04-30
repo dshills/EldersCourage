@@ -3,9 +3,9 @@ extends CharacterBody2D
 signal damage_dealt(amount: int, at_position: Vector2, color: Color)
 signal died
 
+const BruteTexture := preload("res://assets/sprites/enemies/hollow_brute.png")
 const MOVE_SPEED := 80.0
 const SLAM_RANGE := 88.0
-const SLAM_DAMAGE := 22
 const SLAM_COOLDOWN := 2.4
 const TELEGRAPH_TIME := 0.7
 
@@ -13,6 +13,7 @@ var damage_multiplier := 1.0
 var speed_multiplier := 1.0
 var max_health := 115
 var current_health := 115
+var attack_damage := 22
 var target: Node2D
 var slam_timer := 0.0
 var telegraph_timer := 0.0
@@ -52,7 +53,7 @@ func _finish_slam() -> void:
 		return
 	var offset := target.global_position - global_position
 	if offset.length() <= SLAM_RANGE + 16.0:
-		var damage := int(roundi(float(SLAM_DAMAGE) * damage_multiplier))
+		var damage := int(roundi(float(attack_damage) * damage_multiplier))
 		target.take_damage(damage)
 		target.global_position += offset.normalized() * 55.0
 		damage_dealt.emit(damage, target.global_position + Vector2(0, -54), Color(0.95, 0.30, 0.08))
@@ -102,8 +103,7 @@ func _speed_multiplier() -> float:
 	return 1.0
 
 func _draw() -> void:
-	draw_circle(Vector2.ZERO, 30, Color(0.32, 0.29, 0.25))
-	draw_rect(Rect2(Vector2(-22, -10), Vector2(44, 22)), Color(0.46, 0.42, 0.35))
+	draw_texture_rect(BruteTexture, Rect2(Vector2(-40, -40), Vector2(80, 80)), false)
 	if telegraph_timer > 0.0:
 		draw_arc(Vector2.ZERO, SLAM_RANGE, 0.0, TAU, 40, Color(1.0, 0.2, 0.05), 4.0)
 	var health_ratio := float(current_health) / float(max_health)

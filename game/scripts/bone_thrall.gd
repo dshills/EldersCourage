@@ -3,15 +3,16 @@ extends CharacterBody2D
 signal damage_dealt(amount: int, at_position: Vector2, color: Color)
 signal died
 
+const ThrallTexture := preload("res://assets/sprites/enemies/bone_thrall.png")
 const MOVE_SPEED := 130.0
 const ATTACK_RANGE := 48.0
-const ATTACK_DAMAGE := 10
 const ATTACK_COOLDOWN := 0.9
 
 var damage_multiplier := 1.0
 var speed_multiplier := 1.0
 var max_health := 60
 var current_health := 60
+var attack_damage := 10
 var target: Node2D
 var attack_timer := 0.0
 var alive := true
@@ -35,7 +36,7 @@ func _physics_process(delta: float) -> void:
 		velocity = Vector2.ZERO
 		if attack_timer <= 0.0:
 			attack_timer = ATTACK_COOLDOWN
-			var damage := int(roundi(float(ATTACK_DAMAGE) * damage_multiplier))
+			var damage := int(roundi(float(attack_damage) * damage_multiplier))
 			target.take_damage(damage)
 			damage_dealt.emit(damage, target.global_position + Vector2(0, -54), Color(0.9, 0.2, 0.2))
 	move_and_slide()
@@ -87,9 +88,7 @@ func _speed_multiplier() -> float:
 	return 1.0
 
 func _draw() -> void:
-	draw_circle(Vector2.ZERO, 20, Color(0.55, 0.50, 0.43))
-	draw_circle(Vector2(-7, -5), 3, Color(0.05, 0.02, 0.02))
-	draw_circle(Vector2(7, -5), 3, Color(0.05, 0.02, 0.02))
+	draw_texture_rect(ThrallTexture, Rect2(Vector2(-32, -32), Vector2(64, 64)), false)
 	var health_ratio := float(current_health) / float(max_health)
 	draw_rect(Rect2(Vector2(-24, -34), Vector2(48, 5)), Color(0.12, 0.02, 0.02))
 	draw_rect(Rect2(Vector2(-24, -34), Vector2(48 * health_ratio, 5)), Color(0.75, 0.12, 0.12))

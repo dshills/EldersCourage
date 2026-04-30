@@ -5,12 +5,14 @@ signal died
 signal summon_requested(position: Vector2)
 
 const MOVE_SPEED := 72.0
-const BELL_SLAM_DAMAGE := 28
-const ECHO_TOLL_DAMAGE := 18
 const MELEE_RANGE := 100.0
 
+var damage_multiplier := 1.0
+var speed_multiplier := 1.0
 var max_health := 260
 var current_health := 260
+var attack_damage := 28
+var echo_toll_damage := 18
 var target: Node2D
 var alive := true
 var attack_timer := 1.0
@@ -39,7 +41,7 @@ func _physics_process(delta: float) -> void:
 	attack_timer -= delta
 	var offset := target.global_position - global_position
 	if offset.length() > MELEE_RANGE:
-		velocity = offset.normalized() * MOVE_SPEED * _speed_multiplier()
+		velocity = offset.normalized() * MOVE_SPEED * speed_multiplier * _speed_multiplier()
 	else:
 		velocity = Vector2.ZERO
 	move_and_slide()
@@ -69,13 +71,15 @@ func _finish_pending_attack() -> void:
 	match pending_attack:
 		"bell_slam":
 			if global_position.distance_to(target.global_position) <= 125.0:
-				target.take_damage(BELL_SLAM_DAMAGE)
-				damage_dealt.emit(BELL_SLAM_DAMAGE, target.global_position + Vector2(0, -56), Color(0.85, 0.85, 1.0))
+				var damage := int(roundi(float(attack_damage) * damage_multiplier))
+				target.take_damage(damage)
+				damage_dealt.emit(damage, target.global_position + Vector2(0, -56), Color(0.85, 0.85, 1.0))
 		"echo_toll":
 			if pending_position.distance_to(target.global_position) <= 90.0:
-				target.take_damage(ECHO_TOLL_DAMAGE)
+				var damage := int(roundi(float(echo_toll_damage) * damage_multiplier))
+				target.take_damage(damage)
 				target.apply_status("vulnerable", 3.0, 0.15)
-				damage_dealt.emit(ECHO_TOLL_DAMAGE, target.global_position + Vector2(0, -56), Color(0.55, 0.85, 1.0))
+				damage_dealt.emit(damage, target.global_position + Vector2(0, -56), Color(0.55, 0.85, 1.0))
 	pending_attack = ""
 
 func take_damage(amount: int) -> void:
@@ -92,8 +96,9 @@ func take_damage(amount: int) -> void:
 func apply_status(status_name: String, duration: float, value: float) -> void:
 	statuses[status_name] = { "duration": duration, "value": value }
 
-func apply_haunted_modifier(_damage_multiplier: float, _speed_multiplier: float) -> void:
-	pass
+func apply_haunted_modifier(new_damage_multiplier: float, new_speed_multiplier: float) -> void:
+	damage_multiplier = maxf(damage_multiplier, new_damage_multiplier)
+	speed_multiplier = maxf(speed_multiplier, new_speed_multiplier)
 
 func _process_statuses(delta: float) -> void:
 	var expired: Array[String] = []

@@ -4,6 +4,7 @@ signal damage_dealt(amount: int, at_position: Vector2, color: Color)
 signal died
 
 const ProjectileScene := preload("res://scripts/witch_projectile.gd")
+const WitchTexture := preload("res://assets/sprites/enemies/ash_witch.png")
 const MOVE_SPEED := 105.0
 const KEEP_DISTANCE := 210.0
 const SHOOT_RANGE := 390.0
@@ -13,6 +14,7 @@ var damage_multiplier := 1.0
 var speed_multiplier := 1.0
 var max_health := 42
 var current_health := 42
+var attack_damage := 12
 var target: Node2D
 var shoot_timer := 0.7
 var alive := true
@@ -46,6 +48,7 @@ func _shoot(direction: Vector2) -> void:
 	projectile.global_position = global_position
 	projectile.direction = direction
 	projectile.target = target
+	projectile.damage = attack_damage
 	projectile.damage_multiplier = damage_multiplier
 	projectile.damage_dealt.connect(func(amount: int, at_position: Vector2, color: Color) -> void:
 		damage_dealt.emit(amount, at_position, color)
@@ -97,8 +100,7 @@ func _speed_multiplier() -> float:
 	return 1.0
 
 func _draw() -> void:
-	draw_circle(Vector2.ZERO, 18, Color(0.58, 0.20, 0.10))
-	draw_line(Vector2(-12, 18), Vector2(12, -18), Color(1.0, 0.42, 0.06), 4.0)
+	draw_texture_rect(WitchTexture, Rect2(Vector2(-32, -32), Vector2(64, 64)), false)
 	var health_ratio := float(current_health) / float(max_health)
 	draw_rect(Rect2(Vector2(-24, -32), Vector2(48, 5)), Color(0.12, 0.02, 0.02))
 	draw_rect(Rect2(Vector2(-24, -32), Vector2(48 * health_ratio, 5)), Color(0.75, 0.12, 0.12))
