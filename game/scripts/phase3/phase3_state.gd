@@ -27,6 +27,7 @@ var defeated := false
 var class_selected := false
 var selected_class_id := ""
 var temporary_modifiers: Array[Dictionary] = []
+var next_item_instance_number := 1
 
 func reset() -> void:
 	items_by_id = _load_records_by_id("res://data/phase3/items.json")
@@ -93,7 +94,7 @@ func _reset_world() -> void:
 		"gold": 0,
 		"baseStats": { "strength": 1, "defense": 1, "spellPower": 0, "maxHealthBonus": 0, "maxManaBonus": 0 },
 		"inventory": [],
-		"equipment": { "weapon": {}, "armor": {}, "trinket": {} },
+		"equipment": { "weapon": "", "armor": "", "trinket": "" },
 		"skills": { "knownSkillIds": [], "cooldowns": {} },
 		"talents": { "availablePoints": 0, "spentPoints": 0, "ranks": {} },
 		"talentTreeId": "",
@@ -102,6 +103,7 @@ func _reset_world() -> void:
 	active_enemy = {}
 	selected_item_id = ""
 	selected_skill_id = ""
+	next_item_instance_number = 1
 	inventory_visible = false
 	talent_panel_visible = false
 	completed_encounters = {}
@@ -295,47 +297,45 @@ func use_skill(skill_id: String) -> void:
 	_advance_turn()
 	state_changed.emit()
 
-func equip_item(item_id: String) -> void:
-	var item := _remove_inventory_item(item_id)
+func equip_item(instance_id: String) -> void:
+	var item := inventory_item(instance_id)
 	if item.is_empty():
 		add_message("That item is not in your pack.", "warning")
 		return
-	if not bool(item.get("equippable", false)):
-		add_message("%s cannot be equipped." % item.get("name", "That item"), "warning")
-		add_item(item_id, int(item.get("quantity", 1)))
+	var definition := item_definition(item)
+	if not bool(definition.get("equippable", false)):
+		add_message("%s cannot be equipped." % display_name(item), "warning")
 		return
-	var slot := str(item.get("equipmentSlot", ""))
+	var slot := str(definition.get("equipmentSlot", ""))
 	var equipment: Dictionary = player["equipment"]
-	var replaced: Dictionary = equipment.get(slot, {})
-	if not replaced.is_empty():
-		add_item(str(replaced["id"]), int(replaced.get("quantity", 1)))
-	equipment[slot] = item
+	equipment[slot] = instance_id
 	player["equipment"] = equipment
 	player["health"] = mini(int(player["health"]), effective_max_health())
 	player["mana"] = mini(int(player["mana"]), effective_max_mana())
 	selected_item_id = ""
-	add_message("Equipped %s." % item.get("name", "item"), "loot")
+	add_message("Equipped %s." % display_name(item), "loot")
 	state_changed.emit()
 
-func use_item(item_id: String) -> void:
-	var item := inventory_item(item_id)
+func use_item(instance_id: String) -> void:
+	var item := inventory_item(instance_id)
 	if item.is_empty():
 		add_message("That item is not in your pack.", "warning")
 		return
-	var effect: Dictionary = item.get("effect", {})
+	var definition := item_definition(item)
+	var effect: Dictionary = definition.get("effect", {})
 	if str(effect.get("type", "")) != "heal":
-		add_message("%s has no use right now." % item.get("name", "That item"), "warning")
+		add_message("%s has no use right now." % display_name(item), "warning")
 		return
 	if int(player["health"]) >= effective_max_health():
 		add_message("You are already at full health.", "warning")
 		return
 	player["health"] = mini(effective_max_health(), int(player["health"]) + int(effect.get("amount", 0)))
-	_decrement_inventory_item(item_id)
-	add_message("Used %s." % item.get("name", "item"), "success")
+	_decrement_inventory_item(instance_id)
+	add_message("Used %s." % display_name(item), "success")
 	state_changed.emit()
 
-func select_item(item_id: String) -> void:
-	selected_item_id = item_id
+func select_item(instance_id: String) -> void:
+	selected_item_id = instance_id
 	state_changed.emit()
 
 func toggle_inventory() -> void:
@@ -373,15 +373,20 @@ func add_item(item_id: String, quantity: int) -> void:
 	var inventory: Array = player.get("inventory", [])
 	if bool(definition.get("stackable", true)):
 		for item in inventory:
-			if str(item.get("id", "")) == item_id:
+			if str(item.get("itemId", "")) == item_id:
 				item["quantity"] = int(item.get("quantity", 0)) + quantity
-				add_message("Found %s x%d." % [item.get("name", item_id), quantity], "loot")
+				add_message("Found %s x%d." % [display_name(item), quantity], "loot")
 				return
-	var item := definition.duplicate(true)
-	item["quantity"] = quantity
-	inventory.append(item)
+	if bool(definition.get("stackable", true)):
+		var item := _make_item_instance(item_id, quantity)
+		inventory.append(item)
+		add_message("Found %s." % display_name(item), "loot")
+	else:
+		for index in range(quantity):
+			var item := _make_item_instance(item_id, 1)
+			inventory.append(item)
+			add_message("Found %s." % display_name(item), "loot")
 	player["inventory"] = inventory
-	add_message("Found %s." % item.get("name", item_id), "loot")
 
 func complete_objective(objective_id: String) -> void:
 	var changed_stage := ""
@@ -408,9 +413,9 @@ func tile_at(position: Dictionary) -> Dictionary:
 			return tile
 	return {}
 
-func inventory_item(item_id: String) -> Dictionary:
+func inventory_item(instance_id: String) -> Dictionary:
 	for item in player.get("inventory", []):
-		if str(item.get("id", "")) == item_id:
+		if str(item.get("instanceId", "")) == instance_id:
 			return item
 	return {}
 
@@ -418,15 +423,30 @@ func selected_item() -> Dictionary:
 	return inventory_item(selected_item_id)
 
 func has_item(item_id: String) -> bool:
-	return not inventory_item(item_id).is_empty()
+	for item in player.get("inventory", []):
+		if str(item.get("itemId", "")) == item_id:
+			return true
+	return false
+
+func item_definition(item: Dictionary) -> Dictionary:
+	return items_by_id.get(str(item.get("itemId", item.get("id", ""))), {})
+
+func display_name(item: Dictionary) -> String:
+	var definition := item_definition(item)
+	return str(definition.get("name", item.get("itemId", "item")))
+
+func equipped_item(slot: String) -> Dictionary:
+	return inventory_item(str(player.get("equipment", {}).get(slot, "")))
 
 func equipment_stats() -> Dictionary:
 	var result := { "strength": 0, "defense": 0, "spellPower": 0, "maxHealthBonus": 0, "maxManaBonus": 0 }
-	for item in player.get("equipment", {}).values():
-		if typeof(item) != TYPE_DICTIONARY:
+	for instance_id in player.get("equipment", {}).values():
+		var item := inventory_item(str(instance_id))
+		if item.is_empty():
 			continue
+		var definition := item_definition(item)
 		for stat in result.keys():
-			result[stat] = int(result[stat]) + int(item.get("stats", {}).get(stat, 0))
+			result[stat] = int(result[stat]) + int(definition.get("stats", {}).get(stat, 0))
 	return result
 
 func talent_stats() -> Dictionary:
@@ -610,23 +630,14 @@ func _mark_current_tile_visited() -> void:
 		if int(tile_position["x"]) == int(position["x"]) and int(tile_position["y"]) == int(position["y"]):
 			tile["state"] = "visited"
 
-func _remove_inventory_item(item_id: String) -> Dictionary:
+func _decrement_inventory_item(instance_id: String) -> void:
 	var inventory: Array = player.get("inventory", [])
 	for index in range(inventory.size()):
 		var item: Dictionary = inventory[index]
-		if str(item.get("id", "")) == item_id:
-			inventory.remove_at(index)
-			player["inventory"] = inventory
-			return item
-	return {}
-
-func _decrement_inventory_item(item_id: String) -> void:
-	var inventory: Array = player.get("inventory", [])
-	for index in range(inventory.size()):
-		var item: Dictionary = inventory[index]
-		if str(item.get("id", "")) == item_id:
+		if str(item.get("instanceId", "")) == instance_id:
 			item["quantity"] = int(item.get("quantity", 0)) - 1
 			if int(item["quantity"]) <= 0:
+				_clear_equipment_reference(instance_id)
 				inventory.remove_at(index)
 			player["inventory"] = inventory
 			return
@@ -635,14 +646,32 @@ func _grant_starting_item(item_id: String) -> void:
 	var definition: Dictionary = items_by_id.get(item_id, {})
 	if definition.is_empty():
 		return
-	var item := definition.duplicate(true)
-	item["quantity"] = int(item.get("quantity", 1))
-	if bool(item.get("equippable", false)) and str(item.get("equipmentSlot", "")) != "":
-		player["equipment"][str(item["equipmentSlot"])] = item
-	else:
-		var inventory: Array = player.get("inventory", [])
-		inventory.append(item)
-		player["inventory"] = inventory
+	var item := _make_item_instance(item_id, int(definition.get("quantity", 1)))
+	var inventory: Array = player.get("inventory", [])
+	inventory.append(item)
+	player["inventory"] = inventory
+	if bool(definition.get("equippable", false)) and str(definition.get("equipmentSlot", "")) != "":
+		player["equipment"][str(definition["equipmentSlot"])] = str(item["instanceId"])
+
+func _make_item_instance(item_id: String, quantity: int) -> Dictionary:
+	var definition: Dictionary = items_by_id.get(item_id, {})
+	var instance_id := "%s_%04d" % [item_id, next_item_instance_number]
+	next_item_instance_number += 1
+	return {
+		"instanceId": instance_id,
+		"itemId": item_id,
+		"quantity": quantity,
+		"knowledgeState": str(definition.get("defaultKnowledgeState", "known")),
+		"identifiedPropertyIds": [],
+		"revealedPropertyIds": [],
+	}
+
+func _clear_equipment_reference(instance_id: String) -> void:
+	var equipment: Dictionary = player.get("equipment", {})
+	for slot in equipment.keys():
+		if str(equipment[slot]) == instance_id:
+			equipment[slot] = ""
+	player["equipment"] = equipment
 
 func _enemy_retaliates() -> void:
 	var retaliation := enemy_damage(active_enemy)

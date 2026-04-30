@@ -391,9 +391,9 @@ func _refresh_stats() -> void:
 	]
 	var equipment: Dictionary = state.player.get("equipment", {})
 	equipment_label.text = "[b]Equipment[/b]\nWeapon: %s\nArmor: %s\nTrinket: %s" % [
-		_equipped_name(equipment.get("weapon", {})),
-		_equipped_name(equipment.get("armor", {})),
-		_equipped_name(equipment.get("trinket", {})),
+		_equipped_name(str(equipment.get("weapon", ""))),
+		_equipped_name(str(equipment.get("armor", ""))),
+		_equipped_name(str(equipment.get("trinket", ""))),
 	]
 
 func _refresh_skills() -> void:
@@ -485,22 +485,24 @@ func _refresh_inventory() -> void:
 		slot.add_theme_stylebox_override("normal", _stylebox(Color(0.10, 0.085, 0.065), Color(0.42, 0.33, 0.18), 2, 4))
 		if index < inventory.size():
 			var item: Dictionary = inventory[index]
-			slot.icon = load(str(item.get("icon", "")))
+			var item_definition: Dictionary = state.item_definition(item)
+			slot.icon = load(str(item_definition.get("icon", "")))
 			slot.expand_icon = true
 			slot.text = "x%d" % int(item.get("quantity", 1))
-			slot.tooltip_text = str(item.get("name", "Item"))
-			slot.pressed.connect(func(item_id := str(item.get("id", ""))) -> void: state.select_item(item_id))
+			slot.tooltip_text = state.display_name(item)
+			slot.pressed.connect(func(instance_id := str(item.get("instanceId", ""))) -> void: state.select_item(instance_id))
 		inventory_grid.add_child(slot)
 	var selected: Dictionary = state.selected_item()
 	if selected.is_empty():
 		item_details.text = "[color=#e8d39c]Select an item.[/color]"
 	else:
+		var selected_definition: Dictionary = state.item_definition(selected)
 		item_details.text = "[b][color=#f0d680]%s[/color][/b]\n%s\n\n%s\n\nQuantity: %d%s" % [
-			selected.get("name", "Item"),
-			selected.get("type", "item"),
-			selected.get("description", ""),
+			state.display_name(selected),
+			selected_definition.get("type", "item"),
+			selected_definition.get("description", ""),
 			int(selected.get("quantity", 1)),
-			_stats_text(selected.get("stats", {})),
+			_stats_text(selected_definition.get("stats", {})),
 		]
 
 func _refresh_actions() -> void:
@@ -643,10 +645,13 @@ func _stylebox(fill: Color, border: Color, border_width: int, radius: int) -> St
 	box.content_margin_bottom = 7
 	return box
 
-func _equipped_name(item) -> String:
-	if typeof(item) != TYPE_DICTIONARY or item.is_empty():
+func _equipped_name(instance_id: String) -> String:
+	if instance_id == "":
 		return "empty"
-	return str(item.get("name", "item"))
+	var item: Dictionary = state.inventory_item(instance_id)
+	if item.is_empty():
+		return "empty"
+	return state.display_name(item)
 
 func _stats_text(stats) -> String:
 	if typeof(stats) != TYPE_DICTIONARY or stats.is_empty():
