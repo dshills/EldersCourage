@@ -6,7 +6,7 @@ config_version=5
 [application]
 
 config/name="EldersCourage Prototype"
-run/main_scene="res://scenes/phase2/FirstAdventureLoop.tscn"
+run/main_scene="res://scenes/phase3/ElderRoadOutskirts.tscn"
 config/features=PackedStringArray("4.0")
 config/icon=""
 

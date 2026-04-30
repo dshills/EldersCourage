@@ -1,11 +1,12 @@
 # EldersCourage
 
-EldersCourage is a playable dark fantasy RPG prototype. The project currently has two implemented slices:
+EldersCourage is a playable dark fantasy RPG prototype. The project currently has three implemented slices:
 
+- Phase 3 Elder Road Outskirts: small explorable map, movement, containers, shrine, equipment, multiple encounters, enemy retaliation, XP, level-up, consumables, quest chain, and zone completion.
 - Phase 2 first-adventure loop: branded fantasy UI, chest interaction, loot pickup, inventory, enemy targeting, basic attack, quest tracker, and message log.
 - Phase 1 Ashen Catacombs dungeon: real-time combat, loot, equipment, cursed soul-rings, attunement, item echoes, death echoes, elite enemies, boss encounter, and completion reward.
 
-The Godot launch scene is currently `game/scenes/phase2/FirstAdventureLoop.tscn`.
+The Godot launch scene is currently `game/scenes/phase3/ElderRoadOutskirts.tscn`.
 
 ## Requirements
 
@@ -24,11 +25,25 @@ On macOS, if `godot` is not on `PATH`, use:
 /Applications/Godot.app/Contents/MacOS/Godot --path game
 ```
 
-To load the Phase 1 dungeon directly:
+To load earlier slices directly:
 
 ```bash
+/Applications/Godot.app/Contents/MacOS/Godot --path game res://scenes/phase2/FirstAdventureLoop.tscn
 /Applications/Godot.app/Contents/MacOS/Godot --path game res://scenes/dungeons/AshenCatacombsRun.tscn
 ```
+
+## Phase 3 Controls
+
+- WASD or arrow keys: move one tile.
+- Click an adjacent map tile to move there.
+- `E`: interact with current tile.
+- `Space`: attack active enemy.
+- `I`: open or close inventory.
+- Open Container button: open a chest/cache on current tile.
+- Activate Shrine button: activate a shrine on current tile.
+- Equip button: equip selected inventory item.
+- Use button: use selected consumable.
+- Restart button: reset after defeat or completion.
 
 ## Phase 2 Controls
 
@@ -76,6 +91,7 @@ go run ./cmd/elders validate-data ./game/data
 go run ./cmd/elders generate-loot --level 5 --rarity relic --seed 42
 go run ./cmd/elders acceptance-report ./game/data
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path game --quit
+/Applications/Godot.app/Contents/MacOS/Godot --headless --path game res://scenes/phase3/ElderRoadOutskirts.tscn --quit
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path game res://scenes/phase2/FirstAdventureLoop.tscn --quit
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path game res://scenes/dungeons/AshenCatacombsRun.tscn --quit
 ```
@@ -84,15 +100,19 @@ go run ./cmd/elders acceptance-report ./game/data
 
 - `game/`: Godot project, scenes, scripts, UI placeholders, and JSON content.
 - `game/assets/`: approved atlas-derived UI, item, portrait, terrain, sprite, icon, tile, and VFX assets.
-- `game/data/`: data-driven Phase 1 and Phase 2 content.
+- `game/data/`: data-driven Phase 1, Phase 2, and Phase 3 content.
+- `game/data/phase3/`: Elder Road zone, items, enemies, loot tables, containers, shrine, and quest chain.
 - `game/data/phase2/`: first-adventure loop items, quest, and enemy definitions.
+- `game/scenes/phase3/`: Phase 3 launch scene.
 - `game/scenes/phase2/`: Phase 2 launch scene.
+- `game/scripts/phase3/`: Phase 3 state/actions and Elder Road UI shell script.
 - `game/scripts/phase2/`: Phase 2 state/actions and UI shell script.
 - `cmd/elders/`: Go CLI entry point.
 - `internal/`: Go validation, loot generation, reporting, and Phase 2 state-helper tests.
 - `specs/prototype/`: prototype specification, implementation plan, decisions, and acceptance status.
 - `specs/phase1/`: Phase 1 spec, plan, and acceptance record.
 - `specs/phase2/`: Phase 2 spec, plan, and acceptance record.
+- `specs/phase3/`: Phase 3 spec, plan, and acceptance record.
 
 ## Specs and Status
 
@@ -100,6 +120,8 @@ go run ./cmd/elders acceptance-report ./game/data
 - Phase 1 acceptance: `specs/phase1/ACCEPTANCE.md`
 - Phase 2 plan: `specs/phase2/PLAN.md`
 - Phase 2 acceptance: `specs/phase2/ACCEPTANCE.md`
+- Phase 3 plan: `specs/phase3/Plan.md`
+- Phase 3 acceptance: `specs/phase3/ACCEPTANCE.md`
 
 ## Current Limitations
 
