@@ -11,7 +11,9 @@
     "id": "phase3_loot_roadside_cache",
     "entries": [
       { "itemId": "phase3_roadwarden_vest", "quantity": 1, "chance": 1.0 },
-      { "itemId": "phase3_minor_health_potion", "quantity": 1, "chance": 1.0 }
+      { "itemId": "phase3_minor_health_potion", "quantity": 1, "chance": 1.0 },
+      { "itemId": "phase5_identify_scroll", "quantity": 2, "chance": 1.0 },
+      { "itemId": "phase5_elder_glass_charm", "quantity": 1, "chance": 1.0 }
     ],
     "gold": { "min": 8, "max": 8 }
   },
@@ -30,7 +32,9 @@
   {
     "id": "phase3_loot_road_bandit",
     "entries": [
-      { "itemId": "phase3_roadwarden_vest", "quantity": 1, "chance": 1.0 }
+      { "itemId": "phase3_roadwarden_vest", "quantity": 1, "chance": 1.0 },
+      { "itemId": "phase5_roadwardens_notched_blade", "quantity": 1, "chance": 1.0 },
+      { "itemId": "phase5_identify_scroll", "quantity": 1, "chance": 1.0 }
     ],
     "gold": { "min": 12, "max": 12 }
   }

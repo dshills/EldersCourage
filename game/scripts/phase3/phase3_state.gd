@@ -28,12 +28,16 @@ var class_selected := false
 var selected_class_id := ""
 var temporary_modifiers: Array[Dictionary] = []
 var next_item_instance_number := 1
+var inventory_interaction := { "mode": "normal", "sourceItemInstanceId": "" }
 
 func reset() -> void:
 	items_by_id = _load_records_by_id("res://data/phase3/items.json")
 	var starter_items := _load_records_by_id("res://data/phase4/starter_items.json")
 	for item_id in starter_items.keys():
 		items_by_id[item_id] = starter_items[item_id]
+	var phase5_items := _load_records_by_id("res://data/phase5/items.json")
+	for item_id in phase5_items.keys():
+		items_by_id[item_id] = phase5_items[item_id]
 	enemies_by_id = _load_records_by_id("res://data/phase3/enemies.json")
 	loot_tables_by_id = _load_records_by_id("res://data/phase3/loot_tables.json")
 	containers_by_id = _load_records_by_id("res://data/phase3/containers.json")
@@ -110,6 +114,7 @@ func _reset_world() -> void:
 	completion_reward_claimed = false
 	defeated = false
 	temporary_modifiers = []
+	inventory_interaction = { "mode": "normal", "sourceItemInstanceId": "" }
 	_mark_current_tile_visited()
 
 func move_player(direction: String) -> void:
@@ -231,6 +236,8 @@ func attack_enemy() -> void:
 	var damage := player_damage(active_enemy)
 	active_enemy["health"] = maxi(0, int(active_enemy.get("health", 0)) - damage)
 	add_message("You strike %s for %d damage." % [active_enemy.get("name", "the enemy"), damage], "combat")
+	_process_curses_for_equipped("attack")
+	_add_attunement_for_slot("weapon", 1)
 	if int(active_enemy.get("health", 0)) <= 0:
 		_defeat_active_enemy()
 	else:
@@ -263,6 +270,8 @@ func use_skill(skill_id: String) -> void:
 		return
 	if str(skill.get("resource", "none")) == "mana":
 		player["mana"] = int(player["mana"]) - cost
+	_process_curses_for_equipped("combat_use")
+	_add_attunement_for_slot("trinket", 1)
 	var damage_total := 0
 	var healing_total := 0
 	var mana_total := 0
@@ -312,6 +321,7 @@ func equip_item(instance_id: String) -> void:
 	player["equipment"] = equipment
 	player["health"] = mini(int(player["health"]), effective_max_health())
 	player["mana"] = mini(int(player["mana"]), effective_max_mana())
+	_process_curses_for_instance(instance_id, "equip")
 	selected_item_id = ""
 	add_message("Equipped %s." % display_name(item), "loot")
 	state_changed.emit()
@@ -322,6 +332,9 @@ func use_item(instance_id: String) -> void:
 		add_message("That item is not in your pack.", "warning")
 		return
 	var definition := item_definition(item)
+	if str(definition.get("id", "")) == "phase5_identify_scroll":
+		enter_identify_mode(instance_id)
+		return
 	var effect: Dictionary = definition.get("effect", {})
 	if str(effect.get("type", "")) != "heal":
 		add_message("%s has no use right now." % display_name(item), "warning")
@@ -335,7 +348,62 @@ func use_item(instance_id: String) -> void:
 	state_changed.emit()
 
 func select_item(instance_id: String) -> void:
+	if str(inventory_interaction.get("mode", "normal")) == "identify_target":
+		identify_target_item(instance_id)
+		return
 	selected_item_id = instance_id
+	state_changed.emit()
+
+func enter_identify_mode(scroll_instance_id: String) -> void:
+	var scroll := inventory_item(scroll_instance_id)
+	if scroll.is_empty() or str(scroll.get("itemId", "")) != "phase5_identify_scroll":
+		add_message("Choose a valid Identify Scroll first.", "warning")
+		return
+	inventory_visible = true
+	inventory_interaction = { "mode": "identify_target", "sourceItemInstanceId": scroll_instance_id }
+	add_message("Choose an item to identify.", "discovery")
+	state_changed.emit()
+
+func cancel_item_target_mode() -> void:
+	inventory_interaction = { "mode": "normal", "sourceItemInstanceId": "" }
+	add_message("Identification cancelled.", "info")
+	state_changed.emit()
+
+func identify_target_item(target_instance_id: String) -> void:
+	var scroll_instance_id := str(inventory_interaction.get("sourceItemInstanceId", ""))
+	var scroll := inventory_item(scroll_instance_id)
+	var target := inventory_item(target_instance_id)
+	if scroll.is_empty() or str(scroll.get("itemId", "")) != "phase5_identify_scroll":
+		inventory_interaction = { "mode": "normal", "sourceItemInstanceId": "" }
+		add_message("No Identify Scroll is ready.", "warning")
+		state_changed.emit()
+		return
+	if target.is_empty() or target_instance_id == scroll_instance_id:
+		add_message("The scroll refuses. Choose a hidden item.", "warning")
+		state_changed.emit()
+		return
+	if not can_identify_item(target):
+		add_message("The scroll refuses. There is nothing hidden here it can reveal.", "warning")
+		state_changed.emit()
+		return
+	var definition := item_definition(target)
+	var revealed: Array[String] = []
+	for property in definition.get("properties", []):
+		if _property_has_requirement(property, "identify") and not _instance_has_revealed_property(target, str(property.get("id", ""))):
+			_reveal_property(target, str(property.get("id", "")))
+			target["identifiedPropertyIds"].append(str(property.get("id", "")))
+			revealed.append(str(property.get("name", "Unknown Property")))
+	var has_more_identify := false
+	for property in definition.get("properties", []):
+		if _property_has_requirement(property, "identify") and not _instance_has_revealed_property(target, str(property.get("id", ""))):
+			has_more_identify = true
+	target["knowledgeState"] = "partially_identified" if has_more_identify else "identified"
+	_replace_inventory_item(target)
+	_decrement_inventory_item(scroll_instance_id)
+	inventory_interaction = { "mode": "normal", "sourceItemInstanceId": "" }
+	selected_item_id = target_instance_id
+	add_message("The scroll burns to ash. %s reveals: %s." % [display_name(target), ", ".join(revealed)], "discovery")
+	_clamp_resources()
 	state_changed.emit()
 
 func toggle_inventory() -> void:
@@ -433,7 +501,21 @@ func item_definition(item: Dictionary) -> Dictionary:
 
 func display_name(item: Dictionary) -> String:
 	var definition := item_definition(item)
+	if str(item.get("knowledgeState", "known")) == "unidentified":
+		return str(definition.get("unidentifiedName", "Unidentified %s" % str(definition.get("type", "Item")).capitalize()))
 	return str(definition.get("name", item.get("itemId", "item")))
+
+func display_description(item: Dictionary) -> String:
+	var definition := item_definition(item)
+	if str(item.get("knowledgeState", "known")) == "unidentified":
+		return str(definition.get("unidentifiedDescription", definition.get("description", "")))
+	return str(definition.get("description", ""))
+
+func display_icon(item: Dictionary) -> String:
+	var definition := item_definition(item)
+	if str(item.get("knowledgeState", "known")) == "unidentified":
+		return str(definition.get("unidentifiedIcon", definition.get("icon", "")))
+	return str(definition.get("icon", ""))
 
 func equipped_item(slot: String) -> Dictionary:
 	return inventory_item(str(player.get("equipment", {}).get(slot, "")))
@@ -447,6 +529,20 @@ func equipment_stats() -> Dictionary:
 		var definition := item_definition(item)
 		for stat in result.keys():
 			result[stat] = int(result[stat]) + int(definition.get("stats", {}).get(stat, 0))
+	return result
+
+func revealed_item_stats() -> Dictionary:
+	var result := { "strength": 0, "defense": 0, "spellPower": 0, "maxHealthBonus": 0, "maxManaBonus": 0 }
+	for item in equipped_items():
+		var definition := item_definition(item)
+		for property in definition.get("properties", []):
+			if not _instance_has_revealed_property(item, str(property.get("id", ""))):
+				continue
+			for effect in property.get("effects", []):
+				if str(effect.get("type", "")) == "stat_bonus" or str(effect.get("type", "")) == "stat_penalty":
+					var stat := str(effect.get("stat", ""))
+					if result.has(stat):
+						result[stat] = int(result[stat]) + int(effect.get("amount", 0))
 	return result
 
 func talent_stats() -> Dictionary:
@@ -469,16 +565,19 @@ func effective_stats() -> Dictionary:
 	var talents := talent_stats()
 	for stat in talents.keys():
 		result[stat] = int(result.get(stat, 0)) + int(talents[stat])
+	var item_stats := revealed_item_stats()
+	for stat in item_stats.keys():
+		result[stat] = int(result.get(stat, 0)) + int(item_stats[stat])
 	return result
 
 func effective_max_health() -> int:
-	return int(player["maxHealth"]) + int(equipment_stats().get("maxHealthBonus", 0)) + int(talent_stats().get("maxHealthBonus", 0))
+	return int(player["maxHealth"]) + int(equipment_stats().get("maxHealthBonus", 0)) + int(talent_stats().get("maxHealthBonus", 0)) + int(revealed_item_stats().get("maxHealthBonus", 0))
 
 func effective_max_mana() -> int:
-	return int(player["maxMana"]) + int(equipment_stats().get("maxManaBonus", 0)) + int(talent_stats().get("maxManaBonus", 0))
+	return int(player["maxMana"]) + int(equipment_stats().get("maxManaBonus", 0)) + int(talent_stats().get("maxManaBonus", 0)) + int(revealed_item_stats().get("maxManaBonus", 0))
 
 func player_damage(enemy: Dictionary) -> int:
-	return maxi(1, 8 + int(effective_stats().get("strength", 0)) - int(enemy.get("defense", 0)))
+	return maxi(1, 8 + int(effective_stats().get("strength", 0)) + revealed_basic_damage_bonus() - int(enemy.get("defense", 0)))
 
 func enemy_damage(enemy: Dictionary) -> int:
 	var attack := int(enemy.get("attack", 0))
@@ -504,10 +603,11 @@ func skill_effect_amount(skill: Dictionary, effect: Dictionary) -> int:
 		amount += int(roundi(float(stats.get(scaling_stat, 0)) * float(effect.get("scalingMultiplier", 0.0))))
 	if str(effect.get("type", "")) == "damage":
 		amount += talent_skill_amount(str(skill.get("id", "")), "skill_damage_bonus")
+		amount += revealed_skill_damage_bonus(str(skill.get("id", "")))
 	return maxi(1, amount) if str(effect.get("type", "")) == "damage" else amount
 
 func effective_skill_cost(skill: Dictionary) -> int:
-	return maxi(0, int(skill.get("resourceCost", 0)) - talent_skill_amount(str(skill.get("id", "")), "resource_cost_reduction"))
+	return maxi(0, int(skill.get("resourceCost", 0)) - talent_skill_amount(str(skill.get("id", "")), "resource_cost_reduction") + revealed_mana_cost_modifier(str(skill.get("id", ""))))
 
 func effective_skill_cooldown(skill: Dictionary) -> int:
 	return maxi(0, int(skill.get("cooldownTurns", 0)) - talent_skill_amount(str(skill.get("id", "")), "cooldown_reduction"))
@@ -521,6 +621,57 @@ func talent_skill_amount(skill_id: String, effect_type: String) -> int:
 			if str(effect.get("type", "")) == effect_type and str(effect.get("skillId", "")) == skill_id:
 				total += int(effect.get("amount", 0)) * rank
 	return total
+
+func revealed_skill_damage_bonus(skill_id: String) -> int:
+	var total := 0
+	for item in equipped_items():
+		var definition := item_definition(item)
+		for property in definition.get("properties", []):
+			if not _instance_has_revealed_property(item, str(property.get("id", ""))):
+				continue
+			for effect in property.get("effects", []):
+				if str(effect.get("type", "")) == "damage_bonus" and str(effect.get("skillId", "")) == skill_id:
+					total += int(effect.get("amount", 0))
+	return total
+
+func revealed_basic_damage_bonus() -> int:
+	var total := 0
+	for item in equipped_items():
+		var definition := item_definition(item)
+		for property in definition.get("properties", []):
+			if not _instance_has_revealed_property(item, str(property.get("id", ""))):
+				continue
+			for effect in property.get("effects", []):
+				if str(effect.get("type", "")) == "damage_bonus" and str(effect.get("skillId", "")) == "":
+					total += int(effect.get("amount", 0))
+	return total
+
+func revealed_mana_cost_modifier(skill_id: String) -> int:
+	var total := 0
+	for item in equipped_items():
+		var definition := item_definition(item)
+		for property in definition.get("properties", []):
+			if not _instance_has_revealed_property(item, str(property.get("id", ""))):
+				continue
+			for effect in property.get("effects", []):
+				if str(effect.get("type", "")) == "mana_cost_modifier" and str(effect.get("skillId", "")) == skill_id:
+					total += int(effect.get("amount", 0))
+	return total
+
+func equipped_items() -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	for instance_id in player.get("equipment", {}).values():
+		var item := inventory_item(str(instance_id))
+		if not item.is_empty():
+			result.append(item)
+	return result
+
+func can_identify_item(item: Dictionary) -> bool:
+	var definition := item_definition(item)
+	for property in definition.get("properties", []):
+		if _property_has_requirement(property, "identify") and not _instance_has_revealed_property(item, str(property.get("id", ""))):
+			return true
+	return false
 
 func can_spend_talent(talent: Dictionary) -> bool:
 	var talents: Dictionary = player.get("talents", {})
@@ -573,6 +724,7 @@ func _defeat_active_enemy() -> void:
 	var enemy_id := str(active_enemy.get("id", ""))
 	completed_encounters[enemy_id] = true
 	add_message("%s is defeated." % active_enemy.get("name", "Enemy"), "combat")
+	_process_attunement_after_victory()
 	var xp := int(active_enemy.get("xpReward", 0))
 	if xp > 0:
 		_award_xp(xp)
@@ -599,6 +751,7 @@ func _award_xp(amount: int) -> void:
 		player["xpToNextLevel"] = 100 if int(player["level"]) == 2 else int(player["xpToNextLevel"]) + 50
 		var template := str(current_class().get("levelUpMessage", "You reached level {level}."))
 		add_message(template.replace("{level}", str(int(player["level"]))), "success")
+		_process_level_gated_item_reveals()
 
 func _check_zone_completion() -> void:
 	var complete := true
@@ -613,6 +766,15 @@ func _check_zone_completion() -> void:
 			var reward: Dictionary = quest_chain.get("completionReward", {})
 			_award_xp(int(reward.get("xp", 0)))
 			player["gold"] = int(player["gold"]) + int(reward.get("gold", 0))
+			match selected_class_id:
+				"roadwarden":
+					add_item("phase5_roadwardens_notched_blade", 1)
+				"ember_sage":
+					add_item("phase5_ashen_ring", 1)
+				"gravebound_scout":
+					add_item("phase5_whisperthread_cloak", 1)
+				_:
+					add_item("phase5_ashen_ring", 1)
 			add_message("The Elder Road is secure.", "success")
 
 func _objectives_complete(objectives: Array) -> bool:
@@ -657,7 +819,7 @@ func _make_item_instance(item_id: String, quantity: int) -> Dictionary:
 	var definition: Dictionary = items_by_id.get(item_id, {})
 	var instance_id := "%s_%04d" % [item_id, next_item_instance_number]
 	next_item_instance_number += 1
-	return {
+	var item := {
 		"instanceId": instance_id,
 		"itemId": item_id,
 		"quantity": quantity,
@@ -665,6 +827,12 @@ func _make_item_instance(item_id: String, quantity: int) -> Dictionary:
 		"identifiedPropertyIds": [],
 		"revealedPropertyIds": [],
 	}
+	if bool(definition.get("attunable", false)):
+		item["attunement"] = { "points": 0, "level": 0, "revealedThresholds": [] }
+	for property in definition.get("properties", []):
+		if str(property.get("visibility", "")) == "visible":
+			item["revealedPropertyIds"].append(str(property.get("id", "")))
+	return item
 
 func _clear_equipment_reference(instance_id: String) -> void:
 	var equipment: Dictionary = player.get("equipment", {})
@@ -672,6 +840,138 @@ func _clear_equipment_reference(instance_id: String) -> void:
 		if str(equipment[slot]) == instance_id:
 			equipment[slot] = ""
 	player["equipment"] = equipment
+
+func _replace_inventory_item(updated_item: Dictionary) -> void:
+	var inventory: Array = player.get("inventory", [])
+	for index in range(inventory.size()):
+		var item: Dictionary = inventory[index]
+		if str(item.get("instanceId", "")) == str(updated_item.get("instanceId", "")):
+			inventory[index] = updated_item
+			player["inventory"] = inventory
+			return
+
+func _instance_has_revealed_property(item: Dictionary, property_id: String) -> bool:
+	for revealed_id in item.get("revealedPropertyIds", []):
+		if str(revealed_id) == property_id:
+			return true
+	return false
+
+func _reveal_property(item: Dictionary, property_id: String) -> void:
+	if property_id == "" or _instance_has_revealed_property(item, property_id):
+		return
+	var revealed: Array = item.get("revealedPropertyIds", [])
+	revealed.append(property_id)
+	item["revealedPropertyIds"] = revealed
+
+func _property_has_requirement(property, requirement_type: String) -> bool:
+	if typeof(property) != TYPE_DICTIONARY:
+		return false
+	for requirement in property.get("requirements", []):
+		if str(requirement.get("type", "")) == requirement_type:
+			return true
+	return false
+
+func _property_requirement_value(property: Dictionary, requirement_type: String) -> int:
+	for requirement in property.get("requirements", []):
+		if str(requirement.get("type", "")) == requirement_type:
+			return int(requirement.get("value", 0))
+	return 0
+
+func _process_curses_for_equipped(trigger: String) -> void:
+	for item in equipped_items():
+		_process_curses_for_instance(str(item.get("instanceId", "")), trigger)
+	_clamp_resources()
+
+func _process_curses_for_instance(instance_id: String, trigger: String) -> void:
+	var item := inventory_item(instance_id)
+	if item.is_empty():
+		return
+	var definition := item_definition(item)
+	var changed := false
+	var health_cost := 0
+	for property in definition.get("properties", []):
+		if not bool(property.get("cursed", false)) or not _property_has_requirement(property, trigger):
+			continue
+		var property_id := str(property.get("id", ""))
+		if not _instance_has_revealed_property(item, property_id):
+			_reveal_property(item, property_id)
+			add_message("Curse revealed: %s." % property.get("name", "Unknown Curse"), "curse")
+			changed = true
+		for effect in property.get("effects", []):
+			if str(effect.get("type", "")) == "health_cost":
+				health_cost += int(effect.get("amount", 0))
+	if health_cost > 0:
+		player["health"] = maxi(0, int(player.get("health", 0)) - health_cost)
+		add_message("%s exacts a blood price for %d health." % [display_name(item), health_cost], "curse")
+		if int(player["health"]) <= 0:
+			defeated = true
+			add_message("You are defeated. Restart to try again.", "warning")
+	if changed:
+		_replace_inventory_item(item)
+		_clamp_resources()
+
+func _process_attunement_after_victory() -> void:
+	for item in equipped_items():
+		var definition := item_definition(item)
+		if bool(definition.get("attunable", false)):
+			_add_attunement_to_instance(str(item.get("instanceId", "")), 1)
+
+func _add_attunement_for_slot(slot: String, points: int) -> void:
+	var instance_id := str(player.get("equipment", {}).get(slot, ""))
+	if instance_id != "":
+		_add_attunement_to_instance(instance_id, points)
+
+func _add_attunement_to_instance(instance_id: String, points: int) -> void:
+	if points <= 0:
+		return
+	var item := inventory_item(instance_id)
+	if item.is_empty():
+		return
+	var definition := item_definition(item)
+	if not bool(definition.get("attunable", false)):
+		return
+	var attunement: Dictionary = item.get("attunement", { "points": 0, "level": 0, "revealedThresholds": [] })
+	var old_level := int(attunement.get("level", 0))
+	attunement["points"] = int(attunement.get("points", 0)) + points
+	var new_level := _attunement_level(int(attunement["points"]))
+	attunement["level"] = new_level
+	item["attunement"] = attunement
+	if new_level > old_level:
+		add_message("%s grows familiar. Attunement reached Level %d." % [display_name(item), new_level], "discovery")
+		for property in definition.get("properties", []):
+			var required_level := _property_requirement_value(property, "attunement")
+			if required_level > 0 and new_level >= required_level and not _instance_has_revealed_property(item, str(property.get("id", ""))):
+				_reveal_property(item, str(property.get("id", "")))
+				add_message("New property revealed: %s." % property.get("name", "Unknown Property"), "discovery")
+	_replace_inventory_item(item)
+	_clamp_resources()
+
+func _attunement_level(points: int) -> int:
+	if points >= 9:
+		return 3
+	if points >= 5:
+		return 2
+	if points >= 2:
+		return 1
+	return 0
+
+func _process_level_gated_item_reveals() -> void:
+	for item in player.get("inventory", []):
+		var changed := false
+		var definition := item_definition(item)
+		for property in definition.get("properties", []):
+			var required_level := _property_requirement_value(property, "player_level")
+			if required_level > 0 and int(player.get("level", 1)) >= required_level and not _instance_has_revealed_property(item, str(property.get("id", ""))):
+				_reveal_property(item, str(property.get("id", "")))
+				add_message("%s awakens: %s." % [display_name(item), property.get("name", "Unknown Property")], "discovery")
+				changed = true
+		if changed:
+			_replace_inventory_item(item)
+	_clamp_resources()
+
+func _clamp_resources() -> void:
+	player["health"] = mini(int(player.get("health", 0)), effective_max_health())
+	player["mana"] = mini(int(player.get("mana", 0)), effective_max_mana())
 
 func _enemy_retaliates() -> void:
 	var retaliation := enemy_damage(active_enemy)

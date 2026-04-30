@@ -253,6 +253,9 @@ func _build_inventory_panel() -> PanelContainer:
 	var use := _text_button("Use", "Use selected item")
 	use.pressed.connect(func() -> void: state.use_item(state.selected_item_id))
 	details_box.add_child(use)
+	var cancel_identify := _text_button("Cancel Identify", "Cancel item target mode")
+	cancel_identify.pressed.connect(state.cancel_item_target_mode)
+	details_box.add_child(cancel_identify)
 	return panel
 
 func _build_talent_panel() -> PanelContainer:
@@ -486,23 +489,33 @@ func _refresh_inventory() -> void:
 		if index < inventory.size():
 			var item: Dictionary = inventory[index]
 			var item_definition: Dictionary = state.item_definition(item)
-			slot.icon = load(str(item_definition.get("icon", "")))
+			slot.icon = load(state.display_icon(item))
 			slot.expand_icon = true
 			slot.text = "x%d" % int(item.get("quantity", 1))
 			slot.tooltip_text = state.display_name(item)
+			if str(state.inventory_interaction.get("mode", "normal")) == "identify_target":
+				if state.can_identify_item(item):
+					slot.add_theme_stylebox_override("normal", _stylebox(Color(0.12, 0.16, 0.11), Color(0.44, 0.74, 0.35), 2, 4))
+				else:
+					slot.add_theme_stylebox_override("normal", _stylebox(Color(0.08, 0.075, 0.065), Color(0.25, 0.22, 0.17), 2, 4))
 			slot.pressed.connect(func(instance_id := str(item.get("instanceId", ""))) -> void: state.select_item(instance_id))
 		inventory_grid.add_child(slot)
 	var selected: Dictionary = state.selected_item()
 	if selected.is_empty():
-		item_details.text = "[color=#e8d39c]Select an item.[/color]"
+		var prompt := "[color=#e8d39c]Select an item.[/color]"
+		if str(state.inventory_interaction.get("mode", "normal")) == "identify_target":
+			prompt = "[color=#e8d39c]Choose an item to identify.[/color]"
+		item_details.text = prompt
 	else:
 		var selected_definition: Dictionary = state.item_definition(selected)
-		item_details.text = "[b][color=#f0d680]%s[/color][/b]\n%s\n\n%s\n\nQuantity: %d%s" % [
+		item_details.text = "[b][color=#f0d680]%s[/color][/b]\n%s\nKnowledge: %s\n\n%s\n\nQuantity: %d%s%s" % [
 			state.display_name(selected),
 			selected_definition.get("type", "item"),
-			selected_definition.get("description", ""),
+			selected.get("knowledgeState", "known"),
+			state.display_description(selected),
 			int(selected.get("quantity", 1)),
 			_stats_text(selected_definition.get("stats", {})),
+			_discovery_text(selected),
 		]
 
 func _refresh_actions() -> void:
@@ -661,6 +674,27 @@ func _stats_text(stats) -> String:
 		parts.append("%s %+d" % [str(key), int(stats[key])])
 	return "\n\nStats: %s" % ", ".join(parts)
 
+func _discovery_text(item: Dictionary) -> String:
+	var definition: Dictionary = state.item_definition(item)
+	var lines: Array[String] = []
+	if bool(definition.get("attunable", false)):
+		var attunement: Dictionary = item.get("attunement", { "points": 0, "level": 0 })
+		lines.append("Attunement: Level %d - %d points" % [int(attunement.get("level", 0)), int(attunement.get("points", 0))])
+	for property in definition.get("properties", []):
+		var revealed: bool = state._instance_has_revealed_property(item, str(property.get("id", "")))
+		if revealed:
+			var label := "Curse" if bool(property.get("cursed", false)) else "Revealed"
+			lines.append("%s: %s - %s" % [label, property.get("name", "Property"), property.get("description", "")])
+		elif state._property_has_requirement(property, "attunement"):
+			lines.append("Locked Property: Requires Attunement %d" % state._property_requirement_value(property, "attunement"))
+		elif state._property_has_requirement(property, "player_level"):
+			lines.append("Locked Property: Requires Level %d" % state._property_requirement_value(property, "player_level"))
+		elif str(item.get("knowledgeState", "known")) != "known":
+			lines.append("Unknown Property: ???")
+	if lines.is_empty():
+		return ""
+	return "\n\n%s" % "\n".join(lines)
+
 func _skill_names(skill_ids: Array) -> Array[String]:
 	var names: Array[String] = []
 	for skill_id in skill_ids:
@@ -677,6 +711,10 @@ func _message_color(type: String) -> Color:
 			return Color(0.44, 0.08, 0.05)
 		"loot":
 			return Color(0.34, 0.22, 0.02)
+		"discovery":
+			return Color(0.18, 0.22, 0.50)
+		"curse":
+			return Color(0.50, 0.04, 0.16)
 		_:
 			return Color(0.20, 0.13, 0.07)
 
