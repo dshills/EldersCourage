@@ -13,7 +13,8 @@
       { "itemId": "phase3_roadwarden_vest", "quantity": 1, "chance": 1.0 },
       { "itemId": "phase3_minor_health_potion", "quantity": 1, "chance": 1.0 },
       { "itemId": "phase5_identify_scroll", "quantity": 2, "chance": 1.0 },
-      { "itemId": "phase5_elder_glass_charm", "quantity": 1, "chance": 1.0 }
+      { "itemId": "phase5_elder_glass_charm", "quantity": 1, "chance": 1.0 },
+      { "itemId": "phase5_ashen_ring", "quantity": 1, "chance": 1.0 }
     ],
     "gold": { "min": 8, "max": 8 }
   },
