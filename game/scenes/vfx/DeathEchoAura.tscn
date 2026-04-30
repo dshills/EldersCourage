@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://death_echo_aura"]
+
+[ext_resource type="Script" path="res://scripts/death_echo.gd" id="1"]
+
+[node name="DeathEchoAura" type="Area2D"]
+script = ExtResource("1")
