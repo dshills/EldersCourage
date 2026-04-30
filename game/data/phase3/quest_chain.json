@@ -1,0 +1,39 @@
+{
+  "id": "phase3_the_elder_road",
+  "title": "The Elder Road",
+  "description": "Secure the outskirts, recover supplies, and break the ambush at the Elder Stone.",
+  "completed": false,
+  "completionReward": { "xp": 25, "gold": 20 },
+  "stages": [
+    {
+      "id": "phase3_recover_supplies",
+      "title": "Recover Supplies",
+      "description": "Find a weapon and prepare to move beyond camp.",
+      "completed": false,
+      "objectives": [
+        { "id": "phase3_open_abandoned_chest", "label": "Open the abandoned chest", "completed": false },
+        { "id": "phase3_find_old_sword", "label": "Find the Old Sword", "completed": false }
+      ]
+    },
+    {
+      "id": "phase3_clear_the_road",
+      "title": "Clear the Road",
+      "description": "Defeat the threats blocking the elder road.",
+      "completed": false,
+      "objectives": [
+        { "id": "phase3_defeat_goblin_scout", "label": "Defeat the Goblin Scout", "completed": false },
+        { "id": "phase3_defeat_starved_wolf", "label": "Defeat the Starved Wolf", "completed": false }
+      ]
+    },
+    {
+      "id": "phase3_break_the_ambush",
+      "title": "Break the Ambush",
+      "description": "End the bandit threat and reach the Elder Stone.",
+      "completed": false,
+      "objectives": [
+        { "id": "phase3_defeat_road_bandit", "label": "Defeat the Road Bandit", "completed": false },
+        { "id": "phase3_reach_elder_stone", "label": "Reach the Elder Stone", "completed": false }
+      ]
+    }
+  ]
+}

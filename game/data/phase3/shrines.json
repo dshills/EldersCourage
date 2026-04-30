@@ -1,0 +1,10 @@
+[
+  {
+    "id": "phase3_weathered_shrine",
+    "name": "Weathered Shrine",
+    "activated": false,
+    "restoreHealth": 20,
+    "restoreMana": 10,
+    "grantItemId": "phase3_cracked_ember_charm"
+  }
+]

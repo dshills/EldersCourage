@@ -79,6 +79,71 @@ func TestDataRejectsDuplicatePhase2QuestObjective(t *testing.T) {
 	}
 }
 
+func TestDataAcceptsPhase3Documents(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "phase3/items.json", `[
+		{"id":"phase3_old_sword","name":"Old Sword","type":"weapon","description":"A blade.","icon":"res://assets/items/sword.png","quantity":1,"stackable":false,"equippable":true,"equipmentSlot":"weapon","stats":{"strength":2}}
+	]`)
+	writeFile(t, root, "phase3/loot_tables.json", `[
+		{"id":"phase3_loot_test","entries":[{"itemId":"phase3_old_sword","quantity":1,"chance":1}],"gold":{"min":1,"max":2}}
+	]`)
+	writeFile(t, root, "phase3/enemies.json", `[
+		{"id":"phase3_goblin_scout","name":"Goblin Scout","health":30,"maxHealth":30,"attack":4,"defense":0,"xpReward":20,"lootTable":"phase3_loot_test"}
+	]`)
+	writeFile(t, root, "phase3/containers.json", `[
+		{"id":"phase3_chest","name":"Chest","opened":false,"lootTableId":"phase3_loot_test"}
+	]`)
+	writeFile(t, root, "phase3/shrines.json", `[
+		{"id":"phase3_shrine","name":"Shrine","activated":false,"restoreHealth":20,"restoreMana":10}
+	]`)
+	writeFile(t, root, "phase3/quest_chain.json", `{
+		"id":"phase3_quest","title":"Quest","description":"Do work.","completed":false,
+		"stages":[{"id":"stage","title":"Stage","description":"Do it.","completed":false,"objectives":[{"id":"objective","label":"Done","completed":false}]}]
+	}`)
+	writeFile(t, root, "phase3/zone_test.json", `{
+		"id":"phase3_zone","name":"Zone","description":"A zone.","width":2,"height":1,"startPosition":[0,0],"completed":false,
+		"tiles":[
+			{"id":"tile_a","kind":"camp","name":"Camp","description":"Start","position":[0,0],"state":"visited"},
+			{"id":"tile_b","kind":"road","name":"Road","description":"Fight","position":[1,0],"state":"visible","encounterId":"phase3_goblin_scout","containerId":"phase3_chest","shrineId":"phase3_shrine"}
+		]
+	}`)
+
+	if _, err := Data(root); err != nil {
+		t.Fatalf("Data returned error: %v", err)
+	}
+}
+
+func TestDataRejectsPhase3ZoneOutOfBounds(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "phase3/zone_bad.json", `{
+		"id":"phase3_zone","name":"Zone","description":"A zone.","width":1,"height":1,"startPosition":[0,0],"completed":false,
+		"tiles":[{"id":"tile_bad","kind":"road","name":"Road","description":"Bad","position":[2,0],"state":"visible"}]
+	}`)
+
+	_, err := Data(root)
+	if err == nil {
+		t.Fatal("Data returned nil error for phase3 out-of-bounds tile")
+	}
+	if !strings.Contains(err.Error(), "out of bounds") {
+		t.Fatalf("error = %q, want out of bounds", err.Error())
+	}
+}
+
+func TestDataRejectsPhase3UnknownLootItemReference(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "phase3/loot_tables.json", `[
+		{"id":"phase3_loot_test","entries":[{"itemId":"missing_item","quantity":1,"chance":1}]}
+	]`)
+
+	_, err := Data(root)
+	if err == nil {
+		t.Fatal("Data returned nil error for phase3 unknown loot item")
+	}
+	if !strings.Contains(err.Error(), "unknown item") {
+		t.Fatalf("error = %q, want unknown item", err.Error())
+	}
+}
+
 func TestDataRejectsMalformedJSON(t *testing.T) {
 	root := t.TempDir()
 	writeFile(t, root, "items/broken.json", `{"id":`)

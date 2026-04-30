@@ -153,6 +153,27 @@ func validateDocument(path string, value any, seenIDs map[string]string) error {
 	if strings.Contains(cleanPath, "/phase2/quests.json") {
 		return validatePhase2QuestDocument(path, value)
 	}
+	if strings.Contains(cleanPath, "/phase3/items.json") {
+		return validatePhase3ItemDocument(path, value)
+	}
+	if strings.Contains(cleanPath, "/phase3/enemies.json") {
+		return validatePhase3EnemyDocument(path, value)
+	}
+	if strings.Contains(cleanPath, "/phase3/loot_tables.json") {
+		return validatePhase3LootTableDocument(path, value)
+	}
+	if strings.Contains(cleanPath, "/phase3/containers.json") {
+		return validatePhase3ContainerDocument(path, value)
+	}
+	if strings.Contains(cleanPath, "/phase3/shrines.json") {
+		return validatePhase3ShrineDocument(path, value)
+	}
+	if strings.Contains(cleanPath, "/phase3/quest_chain.json") {
+		return validatePhase3QuestChainDocument(path, value)
+	}
+	if strings.Contains(cleanPath, "/phase3/zone_") {
+		return validatePhase3ZoneDocument(path, value)
+	}
 	if strings.Contains(cleanPath, "/items/") {
 		return validateItemDocument(path, value)
 	}
@@ -176,6 +197,255 @@ func validateDocument(path string, value any, seenIDs map[string]string) error {
 	}
 	if strings.Contains(cleanPath, "/dungeons/") {
 		return validateDungeonDocument(path, value)
+	}
+	return nil
+}
+
+func validatePhase3ItemDocument(path string, value any) error {
+	for _, item := range records(value) {
+		for _, field := range []string{"id", "name", "type", "description", "icon"} {
+			if raw, ok := item[field].(string); !ok || strings.TrimSpace(raw) == "" {
+				return fmt.Errorf("%s: phase3 item missing string field %q", path, field)
+			}
+		}
+		itemType, _ := item["type"].(string)
+		if !validString(itemType, []string{"currency", "weapon", "armor", "trinket", "consumable", "quest", "rune"}) {
+			return fmt.Errorf("%s: phase3 item %q has invalid type %q", path, item["id"], itemType)
+		}
+		if quantity, ok := item["quantity"].(float64); !ok || quantity < 0 {
+			return fmt.Errorf("%s: phase3 item %q quantity must be non-negative numeric", path, item["id"])
+		}
+		equippable, ok := item["equippable"].(bool)
+		if !ok {
+			return fmt.Errorf("%s: phase3 item %q equippable must be boolean", path, item["id"])
+		}
+		if _, ok := item["stackable"].(bool); !ok {
+			return fmt.Errorf("%s: phase3 item %q stackable must be boolean", path, item["id"])
+		}
+		if equippable {
+			slot, ok := item["equipmentSlot"].(string)
+			if !ok || !validString(slot, []string{"weapon", "armor", "trinket"}) {
+				return fmt.Errorf("%s: phase3 item %q has invalid equipmentSlot %q", path, item["id"], item["equipmentSlot"])
+			}
+			if stats, ok := item["stats"].(map[string]any); !ok || len(stats) == 0 {
+				return fmt.Errorf("%s: phase3 item %q requires stats object", path, item["id"])
+			} else if err := validatePhase3Stats(path, item["id"], stats); err != nil {
+				return err
+			}
+		}
+		if effect, ok := item["effect"].(map[string]any); ok {
+			effectType, _ := effect["type"].(string)
+			if effectType != "heal" {
+				return fmt.Errorf("%s: phase3 item %q has invalid effect type %q", path, item["id"], effectType)
+			}
+			if amount, ok := effect["amount"].(float64); !ok || amount <= 0 {
+				return fmt.Errorf("%s: phase3 item %q heal amount must be positive numeric", path, item["id"])
+			}
+		}
+	}
+	return nil
+}
+
+func validatePhase3Stats(path string, itemID any, stats map[string]any) error {
+	for stat, value := range stats {
+		if !validString(stat, []string{"strength", "defense", "spellPower", "maxHealthBonus", "maxManaBonus"}) {
+			return fmt.Errorf("%s: phase3 item %q has invalid stat %q", path, itemID, stat)
+		}
+		if _, ok := value.(float64); !ok {
+			return fmt.Errorf("%s: phase3 item %q stat %q must be numeric", path, itemID, stat)
+		}
+	}
+	return nil
+}
+
+func validatePhase3EnemyDocument(path string, value any) error {
+	for _, enemy := range records(value) {
+		for _, field := range []string{"id", "name", "lootTable"} {
+			if raw, ok := enemy[field].(string); !ok || strings.TrimSpace(raw) == "" {
+				return fmt.Errorf("%s: phase3 enemy missing string field %q", path, field)
+			}
+		}
+		for _, field := range []string{"health", "maxHealth", "attack", "defense", "xpReward"} {
+			value, ok := enemy[field].(float64)
+			if !ok || value < 0 || (field == "health" || field == "maxHealth") && value == 0 {
+				return fmt.Errorf("%s: phase3 enemy %q field %q must be valid numeric", path, enemy["id"], field)
+			}
+		}
+	}
+	return nil
+}
+
+func validatePhase3LootTableDocument(path string, value any) error {
+	for _, table := range records(value) {
+		if raw, ok := table["id"].(string); !ok || strings.TrimSpace(raw) == "" {
+			return fmt.Errorf("%s: phase3 loot table missing id", path)
+		}
+		entries, ok := table["entries"].([]any)
+		if !ok {
+			return fmt.Errorf("%s: phase3 loot table %q requires entries array", path, table["id"])
+		}
+		for _, rawEntry := range entries {
+			entry, ok := rawEntry.(map[string]any)
+			if !ok {
+				return fmt.Errorf("%s: phase3 loot table %q entry must be object", path, table["id"])
+			}
+			if raw, ok := entry["itemId"].(string); !ok || strings.TrimSpace(raw) == "" {
+				return fmt.Errorf("%s: phase3 loot table %q entry missing itemId", path, table["id"])
+			}
+			if quantity, ok := entry["quantity"].(float64); !ok || quantity <= 0 {
+				return fmt.Errorf("%s: phase3 loot table %q entry quantity must be positive numeric", path, table["id"])
+			}
+			if chance, ok := entry["chance"].(float64); !ok || chance < 0 || chance > 1 {
+				return fmt.Errorf("%s: phase3 loot table %q entry chance must be 0..1", path, table["id"])
+			}
+		}
+		if gold, ok := table["gold"].(map[string]any); ok {
+			minimum, minOK := gold["min"].(float64)
+			maximum, maxOK := gold["max"].(float64)
+			if !minOK || !maxOK || minimum < 0 || maximum < minimum {
+				return fmt.Errorf("%s: phase3 loot table %q has invalid gold range", path, table["id"])
+			}
+		}
+	}
+	return nil
+}
+
+func validatePhase3ContainerDocument(path string, value any) error {
+	for _, container := range records(value) {
+		for _, field := range []string{"id", "name", "lootTableId"} {
+			if raw, ok := container[field].(string); !ok || strings.TrimSpace(raw) == "" {
+				return fmt.Errorf("%s: phase3 container missing string field %q", path, field)
+			}
+		}
+		if _, ok := container["opened"].(bool); !ok {
+			return fmt.Errorf("%s: phase3 container %q opened must be boolean", path, container["id"])
+		}
+	}
+	return nil
+}
+
+func validatePhase3ShrineDocument(path string, value any) error {
+	for _, shrine := range records(value) {
+		for _, field := range []string{"id", "name"} {
+			if raw, ok := shrine[field].(string); !ok || strings.TrimSpace(raw) == "" {
+				return fmt.Errorf("%s: phase3 shrine missing string field %q", path, field)
+			}
+		}
+		if _, ok := shrine["activated"].(bool); !ok {
+			return fmt.Errorf("%s: phase3 shrine %q activated must be boolean", path, shrine["id"])
+		}
+		for _, field := range []string{"restoreHealth", "restoreMana"} {
+			if value, ok := shrine[field].(float64); !ok || value < 0 {
+				return fmt.Errorf("%s: phase3 shrine %q field %q must be non-negative numeric", path, shrine["id"], field)
+			}
+		}
+	}
+	return nil
+}
+
+func validatePhase3QuestChainDocument(path string, value any) error {
+	chains := records(value)
+	if len(chains) != 1 {
+		return fmt.Errorf("%s: phase3 quest chain document must contain one object", path)
+	}
+	chain := chains[0]
+	for _, field := range []string{"id", "title", "description"} {
+		if raw, ok := chain[field].(string); !ok || strings.TrimSpace(raw) == "" {
+			return fmt.Errorf("%s: phase3 quest chain missing string field %q", path, field)
+		}
+	}
+	stages, ok := chain["stages"].([]any)
+	if !ok || len(stages) == 0 {
+		return fmt.Errorf("%s: phase3 quest chain requires stages", path)
+	}
+	for _, rawStage := range stages {
+		stage, ok := rawStage.(map[string]any)
+		if !ok {
+			return fmt.Errorf("%s: phase3 quest stage must be object", path)
+		}
+		for _, field := range []string{"id", "title", "description"} {
+			if raw, ok := stage[field].(string); !ok || strings.TrimSpace(raw) == "" {
+				return fmt.Errorf("%s: phase3 quest stage missing string field %q", path, field)
+			}
+		}
+		objectives, ok := stage["objectives"].([]any)
+		if !ok || len(objectives) == 0 {
+			return fmt.Errorf("%s: phase3 quest stage %q requires objectives", path, stage["id"])
+		}
+		for _, rawObjective := range objectives {
+			objective, ok := rawObjective.(map[string]any)
+			if !ok {
+				return fmt.Errorf("%s: phase3 quest objective must be object", path)
+			}
+			for _, field := range []string{"id", "label"} {
+				if raw, ok := objective[field].(string); !ok || strings.TrimSpace(raw) == "" {
+					return fmt.Errorf("%s: phase3 quest objective missing string field %q", path, field)
+				}
+			}
+			if _, ok := objective["completed"].(bool); !ok {
+				return fmt.Errorf("%s: phase3 quest objective %q completed must be boolean", path, objective["id"])
+			}
+		}
+	}
+	return nil
+}
+
+func validatePhase3ZoneDocument(path string, value any) error {
+	zones := records(value)
+	if len(zones) != 1 {
+		return fmt.Errorf("%s: phase3 zone document must contain one object", path)
+	}
+	zone := zones[0]
+	for _, field := range []string{"id", "name", "description"} {
+		if raw, ok := zone[field].(string); !ok || strings.TrimSpace(raw) == "" {
+			return fmt.Errorf("%s: phase3 zone missing string field %q", path, field)
+		}
+	}
+	width, widthOK := zone["width"].(float64)
+	height, heightOK := zone["height"].(float64)
+	if !widthOK || !heightOK || width <= 0 || height <= 0 {
+		return fmt.Errorf("%s: phase3 zone requires positive width and height", path)
+	}
+	if err := validatePoint(path, zone["id"], "startPosition", zone["startPosition"]); err != nil {
+		return err
+	}
+	tiles, ok := zone["tiles"].([]any)
+	if !ok || len(tiles) == 0 {
+		return fmt.Errorf("%s: phase3 zone %q requires tiles", path, zone["id"])
+	}
+	seenPositions := map[string]bool{}
+	for _, rawTile := range tiles {
+		tile, ok := rawTile.(map[string]any)
+		if !ok {
+			return fmt.Errorf("%s: phase3 zone tile must be object", path)
+		}
+		for _, field := range []string{"id", "kind", "name", "description", "state"} {
+			if raw, ok := tile[field].(string); !ok || strings.TrimSpace(raw) == "" {
+				return fmt.Errorf("%s: phase3 zone tile missing string field %q", path, field)
+			}
+		}
+		kind, _ := tile["kind"].(string)
+		if !validString(kind, []string{"camp", "road", "woods", "chest", "shrine", "ruins", "gate", "elder_stone"}) {
+			return fmt.Errorf("%s: phase3 zone tile %q has invalid kind %q", path, tile["id"], kind)
+		}
+		state, _ := tile["state"].(string)
+		if !validString(state, []string{"hidden", "visible", "visited"}) {
+			return fmt.Errorf("%s: phase3 zone tile %q has invalid state %q", path, tile["id"], state)
+		}
+		if err := validatePoint(path, tile["id"], "position", tile["position"]); err != nil {
+			return err
+		}
+		position := tile["position"].([]any)
+		x := position[0].(float64)
+		y := position[1].(float64)
+		if x < 0 || y < 0 || x >= width || y >= height {
+			return fmt.Errorf("%s: phase3 zone tile %q position out of bounds", path, tile["id"])
+		}
+		positionKey := fmt.Sprintf("%d,%d", int(x), int(y))
+		if seenPositions[positionKey] {
+			return fmt.Errorf("%s: phase3 zone has duplicate tile position %s", path, positionKey)
+		}
+		seenPositions[positionKey] = true
 	}
 	return nil
 }
@@ -618,6 +888,11 @@ func validateModifierDocument(path string, value any) error {
 
 func validateReferences(path string, value any, seenIDs map[string]string, itemTags map[string]bool, enemyIDs map[string]bool, modifierIDs map[string]bool) error {
 	cleanPath := filepath.ToSlash(path)
+	if strings.Contains(cleanPath, "/phase3/") {
+		if err := validatePhase3References(path, value, seenIDs); err != nil {
+			return err
+		}
+	}
 	if strings.Contains(cleanPath, "/items/") {
 		for _, item := range records(value) {
 			if curse, ok := item["curse"].(map[string]any); ok {
@@ -689,6 +964,73 @@ func validateReferences(path string, value any, seenIDs map[string]string, itemT
 					}
 					if !modifierIDs[modifierID] {
 						return fmt.Errorf("%s: dungeon room %q references unknown modifier %q", path, room["id"], modifierID)
+					}
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func validatePhase3References(path string, value any, seenIDs map[string]string) error {
+	cleanPath := filepath.ToSlash(path)
+	if strings.Contains(cleanPath, "/phase3/enemies.json") {
+		for _, enemy := range records(value) {
+			lootTableID, _ := enemy["lootTable"].(string)
+			if _, exists := seenIDs[lootTableID]; !exists {
+				return fmt.Errorf("%s: phase3 enemy %q references unknown loot table %q", path, enemy["id"], lootTableID)
+			}
+		}
+	}
+	if strings.Contains(cleanPath, "/phase3/loot_tables.json") {
+		for _, table := range records(value) {
+			for _, rawEntry := range asArray(table["entries"]) {
+				entry, ok := rawEntry.(map[string]any)
+				if !ok {
+					continue
+				}
+				itemID, _ := entry["itemId"].(string)
+				if _, exists := seenIDs[itemID]; !exists {
+					return fmt.Errorf("%s: phase3 loot table %q references unknown item %q", path, table["id"], itemID)
+				}
+			}
+		}
+	}
+	if strings.Contains(cleanPath, "/phase3/containers.json") {
+		for _, container := range records(value) {
+			lootTableID, _ := container["lootTableId"].(string)
+			if _, exists := seenIDs[lootTableID]; !exists {
+				return fmt.Errorf("%s: phase3 container %q references unknown loot table %q", path, container["id"], lootTableID)
+			}
+		}
+	}
+	if strings.Contains(cleanPath, "/phase3/shrines.json") {
+		for _, shrine := range records(value) {
+			if itemID, ok := shrine["grantItemId"].(string); ok && itemID != "" {
+				if _, exists := seenIDs[itemID]; !exists {
+					return fmt.Errorf("%s: phase3 shrine %q references unknown grant item %q", path, shrine["id"], itemID)
+				}
+			}
+		}
+	}
+	if strings.Contains(cleanPath, "/phase3/zone_") {
+		for _, zone := range records(value) {
+			for _, rawTile := range asArray(zone["tiles"]) {
+				tile, ok := rawTile.(map[string]any)
+				if !ok {
+					continue
+				}
+				for field, label := range map[string]string{
+					"encounterId": "encounter",
+					"containerId": "container",
+					"shrineId":    "shrine",
+				} {
+					id, ok := tile[field].(string)
+					if !ok || id == "" {
+						continue
+					}
+					if _, exists := seenIDs[id]; !exists {
+						return fmt.Errorf("%s: phase3 tile %q references unknown %s %q", path, tile["id"], label, id)
 					}
 				}
 			}

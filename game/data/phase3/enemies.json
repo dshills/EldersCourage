@@ -1,0 +1,32 @@
+[
+  {
+    "id": "phase3_goblin_scout",
+    "name": "Goblin Scout",
+    "health": 30,
+    "maxHealth": 30,
+    "attack": 4,
+    "defense": 0,
+    "xpReward": 20,
+    "lootTable": "phase3_loot_goblin_scout"
+  },
+  {
+    "id": "phase3_starved_wolf",
+    "name": "Starved Wolf",
+    "health": 24,
+    "maxHealth": 24,
+    "attack": 6,
+    "defense": 0,
+    "xpReward": 20,
+    "lootTable": "phase3_loot_starved_wolf"
+  },
+  {
+    "id": "phase3_road_bandit",
+    "name": "Road Bandit",
+    "health": 45,
+    "maxHealth": 45,
+    "attack": 7,
+    "defense": 1,
+    "xpReward": 35,
+    "lootTable": "phase3_loot_road_bandit"
+  }
+]

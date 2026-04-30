@@ -1,0 +1,31 @@
+{
+  "id": "phase3_elder_road_outskirts",
+  "name": "Elder Road Outskirts",
+  "description": "A broken road between camp, woods, ruins, and the Elder Stone.",
+  "width": 5,
+  "height": 4,
+  "startPosition": [0, 0],
+  "completed": false,
+  "tiles": [
+    { "id": "tile_camp", "kind": "camp", "name": "Road Camp", "description": "A cold camp at the edge of the elder road.", "position": [0, 0], "state": "visited" },
+    { "id": "tile_road_1", "kind": "road", "name": "Old Road", "description": "The road bends between weeds and broken stones.", "position": [1, 0], "state": "visible" },
+    { "id": "tile_chest", "kind": "chest", "name": "Abandoned Chest", "description": "A supply chest left in the open.", "position": [2, 0], "state": "visible", "containerId": "phase3_abandoned_chest" },
+    { "id": "tile_woods_1", "kind": "woods", "name": "Ash Woods", "description": "Grey trees lean over the path.", "position": [3, 0], "state": "visible" },
+    { "id": "tile_shrine", "kind": "shrine", "name": "Weathered Shrine", "description": "A cracked shrine still remembers old blessings.", "position": [4, 0], "state": "visible", "shrineId": "phase3_weathered_shrine" },
+    { "id": "tile_road_2", "kind": "road", "name": "South Road", "description": "Boot prints cut through the dust.", "position": [0, 1], "state": "visible" },
+    { "id": "tile_road_3", "kind": "road", "name": "Road Crossing", "description": "A narrow crossing watched by crows.", "position": [1, 1], "state": "visible" },
+    { "id": "tile_goblin", "kind": "road", "name": "Scout Ambush", "description": "A goblin scout watches the road.", "position": [2, 1], "state": "visible", "encounterId": "phase3_goblin_scout" },
+    { "id": "tile_road_4", "kind": "road", "name": "Long Bend", "description": "The road stretches toward ruined stones.", "position": [3, 1], "state": "visible" },
+    { "id": "tile_ruins", "kind": "ruins", "name": "Fallen Ruins", "description": "Old walls sink into the grass.", "position": [4, 1], "state": "visible" },
+    { "id": "tile_woods_2", "kind": "woods", "name": "Low Woods", "description": "The brush is low enough to pass.", "position": [0, 2], "state": "visible" },
+    { "id": "tile_bandit", "kind": "road", "name": "Bandit Watch", "description": "A road bandit waits near a broken cart.", "position": [1, 2], "state": "visible", "encounterId": "phase3_road_bandit" },
+    { "id": "tile_road_5", "kind": "road", "name": "Middle Road", "description": "A safer stretch of cracked stones.", "position": [2, 2], "state": "visible" },
+    { "id": "tile_cache", "kind": "chest", "name": "Roadside Cache", "description": "A hidden cache tucked beside the road.", "position": [3, 2], "state": "visible", "containerId": "phase3_roadside_cache" },
+    { "id": "tile_road_6", "kind": "road", "name": "Eastern Road", "description": "The air grows still.", "position": [4, 2], "state": "visible" },
+    { "id": "tile_gate", "kind": "gate", "name": "Old Gate", "description": "The camp gate leans on rusted hinges.", "position": [0, 3], "state": "visible" },
+    { "id": "tile_road_7", "kind": "road", "name": "Lower Road", "description": "A road of mud and pale grass.", "position": [1, 3], "state": "visible" },
+    { "id": "tile_wolf", "kind": "woods", "name": "Wolf Den", "description": "A starved wolf prowls between roots.", "position": [2, 3], "state": "visible", "encounterId": "phase3_starved_wolf" },
+    { "id": "tile_road_8", "kind": "road", "name": "Stone Approach", "description": "Flat stones mark the approach.", "position": [3, 3], "state": "visible" },
+    { "id": "tile_elder_stone", "kind": "elder_stone", "name": "Elder Stone", "description": "The old stone hums at the road's end.", "position": [4, 3], "state": "visible" }
+  ]
+}

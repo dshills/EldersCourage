@@ -1,0 +1,37 @@
+[
+  {
+    "id": "phase3_loot_abandoned_chest",
+    "entries": [
+      { "itemId": "phase3_old_sword", "quantity": 1, "chance": 1.0 },
+      { "itemId": "phase3_minor_health_potion", "quantity": 1, "chance": 1.0 }
+    ],
+    "gold": { "min": 10, "max": 10 }
+  },
+  {
+    "id": "phase3_loot_roadside_cache",
+    "entries": [
+      { "itemId": "phase3_roadwarden_vest", "quantity": 1, "chance": 1.0 },
+      { "itemId": "phase3_minor_health_potion", "quantity": 1, "chance": 1.0 }
+    ],
+    "gold": { "min": 8, "max": 8 }
+  },
+  {
+    "id": "phase3_loot_goblin_scout",
+    "entries": [
+      { "itemId": "phase3_minor_health_potion", "quantity": 1, "chance": 1.0 }
+    ],
+    "gold": { "min": 4, "max": 4 }
+  },
+  {
+    "id": "phase3_loot_starved_wolf",
+    "entries": [],
+    "gold": { "min": 5, "max": 5 }
+  },
+  {
+    "id": "phase3_loot_road_bandit",
+    "entries": [
+      { "itemId": "phase3_roadwarden_vest", "quantity": 1, "chance": 1.0 }
+    ],
+    "gold": { "min": 12, "max": 12 }
+  }
+]

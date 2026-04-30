@@ -1,0 +1,59 @@
+[
+  {
+    "id": "phase3_gold",
+    "name": "Gold",
+    "type": "currency",
+    "description": "Coinage scraped from the elder road.",
+    "icon": "res://assets/items/gold_coins.png",
+    "quantity": 0,
+    "stackable": true,
+    "equippable": false
+  },
+  {
+    "id": "phase3_old_sword",
+    "name": "Old Sword",
+    "type": "weapon",
+    "description": "A reliable blade recovered from road supplies.",
+    "icon": "res://assets/items/sword.png",
+    "quantity": 1,
+    "stackable": false,
+    "equippable": true,
+    "equipmentSlot": "weapon",
+    "stats": { "strength": 2 }
+  },
+  {
+    "id": "phase3_roadwarden_vest",
+    "name": "Roadwarden Vest",
+    "type": "armor",
+    "description": "A patched vest worn by wardens of the elder road.",
+    "icon": "res://assets/icons/items/armor_generic.png",
+    "quantity": 1,
+    "stackable": false,
+    "equippable": true,
+    "equipmentSlot": "armor",
+    "stats": { "defense": 2, "maxHealthBonus": 5 }
+  },
+  {
+    "id": "phase3_cracked_ember_charm",
+    "name": "Cracked Ember Charm",
+    "type": "trinket",
+    "description": "A warm charm that stirs old mana.",
+    "icon": "res://assets/items/fire_rune.png",
+    "quantity": 1,
+    "stackable": false,
+    "equippable": true,
+    "equipmentSlot": "trinket",
+    "stats": { "spellPower": 1, "maxManaBonus": 5 }
+  },
+  {
+    "id": "phase3_minor_health_potion",
+    "name": "Minor Health Potion",
+    "type": "consumable",
+    "description": "Restores 25 health.",
+    "icon": "res://assets/icons/items/consumable_generic.png",
+    "quantity": 1,
+    "stackable": true,
+    "equippable": false,
+    "effect": { "type": "heal", "amount": 25 }
+  }
+]

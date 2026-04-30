@@ -1,0 +1,14 @@
+[
+  {
+    "id": "phase3_abandoned_chest",
+    "name": "Abandoned Chest",
+    "opened": false,
+    "lootTableId": "phase3_loot_abandoned_chest"
+  },
+  {
+    "id": "phase3_roadside_cache",
+    "name": "Roadside Cache",
+    "opened": false,
+    "lootTableId": "phase3_loot_roadside_cache"
+  }
+]
