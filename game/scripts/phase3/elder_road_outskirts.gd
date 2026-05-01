@@ -48,6 +48,9 @@ var skill_bar: HBoxContainer
 var interact_button: Button
 var shrine_button: Button
 var attack_button: Button
+var inventory_toggle_button: Button
+var talent_toggle_button: Button
+var quest_toggle_button: Button
 var restart_button: Button
 var texture_cache := {}
 
@@ -280,15 +283,15 @@ func _build_action_bar() -> Control:
 	bar.add_child(_action_group("Skills", skill_bar))
 	var panel_group := HBoxContainer.new()
 	panel_group.add_theme_constant_override("separation", UITheme.BUTTON_GAP)
-	var inventory_button := _image_button(_load_texture(INVENTORY_BUTTON_PATH), "Toggle inventory", "panel")
-	inventory_button.pressed.connect(state.toggle_inventory)
-	panel_group.add_child(inventory_button)
-	var talent_button := _text_button("Talents", "Toggle talent panel", "panel")
-	talent_button.pressed.connect(state.toggle_talent_panel)
-	panel_group.add_child(talent_button)
-	var quest_button := _image_button(_load_texture(QUEST_BUTTON_PATH), "Quest tracker", "panel")
-	quest_button.pressed.connect(func() -> void: state.toggle_panel("quests"))
-	panel_group.add_child(quest_button)
+	inventory_toggle_button = _image_button(_load_texture(INVENTORY_BUTTON_PATH), "Toggle inventory", "panel")
+	inventory_toggle_button.pressed.connect(state.toggle_inventory)
+	panel_group.add_child(inventory_toggle_button)
+	talent_toggle_button = _text_button("Talents", "Toggle talent panel", "panel")
+	talent_toggle_button.pressed.connect(state.toggle_talent_panel)
+	panel_group.add_child(talent_toggle_button)
+	quest_toggle_button = _image_button(_load_texture(QUEST_BUTTON_PATH), "Quest tracker", "panel")
+	quest_toggle_button.pressed.connect(func() -> void: state.toggle_panel("quests"))
+	panel_group.add_child(quest_toggle_button)
 	restart_button = _text_button("Restart", "Restart Phase 3", "danger")
 	restart_button.pressed.connect(state.restart_game)
 	panel_group.add_child(restart_button)
@@ -723,11 +726,18 @@ func _refresh_actions() -> void:
 	var attack: Dictionary = vm.get("attack", {})
 	interact_button.disabled = not bool(container.get("enabled", false))
 	interact_button.tooltip_text = "Open the container here." if bool(container.get("enabled", false)) else str(container.get("reason", "No unopened container here."))
+	interact_button.text = "Open Container\nReady" if bool(container.get("enabled", false)) else "Open Container\nNo container"
 	shrine_button.disabled = not bool(shrine.get("enabled", false))
 	shrine_button.tooltip_text = "Activate the shrine here." if bool(shrine.get("enabled", false)) else str(shrine.get("reason", "No unused shrine here."))
+	shrine_button.text = "Activate Shrine\nReady" if bool(shrine.get("enabled", false)) else "Activate Shrine\nNo shrine"
 	attack_button.disabled = not bool(attack.get("enabled", false))
 	attack_button.tooltip_text = "Attack active enemy." if bool(attack.get("enabled", false)) else str(attack.get("reason", "No active enemy target."))
+	attack_button.text = "" if bool(attack.get("enabled", false)) else "No target"
 	restart_button.visible = bool(vm.get("restartVisible", false))
+	var active_panel := str(state.ui.get("activePanel", ""))
+	_apply_button_variant(inventory_toggle_button, "panel", active_panel == "inventory")
+	_apply_button_variant(talent_toggle_button, "panel", active_panel == "talents")
+	_apply_button_variant(quest_toggle_button, "panel", active_panel == "quests" or active_panel == "log")
 
 func _interact() -> void:
 	var tile: Dictionary = state.current_tile()
