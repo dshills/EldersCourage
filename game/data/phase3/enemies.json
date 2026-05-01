@@ -28,5 +28,49 @@
     "defense": 1,
     "xpReward": 35,
     "lootTable": "phase3_loot_road_bandit"
+  },
+  {
+    "id": "ember_wisp",
+    "name": "Ember Wisp",
+    "health": 36,
+    "maxHealth": 36,
+    "attack": 8,
+    "defense": 0,
+    "xpReward": 30,
+    "lootTable": "ember_wisp_loot",
+    "traits": ["fire", "spirit"]
+  },
+  {
+    "id": "ash_wolf",
+    "name": "Ash Wolf",
+    "health": 42,
+    "maxHealth": 42,
+    "attack": 9,
+    "defense": 1,
+    "xpReward": 35,
+    "lootTable": "ash_wolf_loot",
+    "traits": ["beast", "ash"]
+  },
+  {
+    "id": "cinder_acolyte",
+    "name": "Cinder Acolyte",
+    "health": 55,
+    "maxHealth": 55,
+    "attack": 10,
+    "defense": 2,
+    "xpReward": 50,
+    "lootTable": "cinder_acolyte_loot",
+    "traits": ["cultist", "fire"]
+  },
+  {
+    "id": "cinderheart_guardian",
+    "name": "Cinderheart Guardian",
+    "health": 70,
+    "maxHealth": 70,
+    "attack": 11,
+    "defense": 2,
+    "xpReward": 75,
+    "lootTable": "cinderheart_guardian_loot",
+    "traits": ["construct", "fire", "guardian"]
   }
 ]

@@ -10,5 +10,11 @@
     "name": "Roadside Cache",
     "opened": false,
     "lootTableId": "phase3_loot_roadside_cache"
+  },
+  {
+    "id": "phase10_cinder_cache",
+    "name": "Cinder Cache",
+    "opened": false,
+    "lootTableId": "cinder_cache_loot"
   }
 ]

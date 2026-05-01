@@ -6,5 +6,12 @@
     "restoreHealth": 20,
     "restoreMana": 10,
     "grantItemId": "phase3_cracked_ember_charm"
+  },
+  {
+    "id": "phase10_smoke_shrine",
+    "name": "Smoke Shrine",
+    "activated": false,
+    "restoreHealth": 30,
+    "restoreMana": 20
   }
 ]

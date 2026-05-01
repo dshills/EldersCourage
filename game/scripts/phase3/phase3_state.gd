@@ -391,6 +391,8 @@ func use_skill(skill_id: String) -> void:
 		var amount := skill_effect_amount(skill, effect)
 		match str(effect.get("type", "")):
 			"damage":
+				if skill_id == "ember_bolt" and str(active_enemy.get("id", "")) == "ember_wisp" and _is_item_equipped("phase9_staff_of_the_ashen_orator"):
+					amount += 2
 				var defense := 0 if bool(skill.get("ignoreDefense", false)) else maxi(0, int(active_enemy.get("defense", 0)) - int(skill.get("defensePierce", 0)))
 				var damage := maxi(1, amount - defense)
 				active_enemy["health"] = maxi(0, int(active_enemy.get("health", 0)) - damage)
@@ -1170,6 +1172,19 @@ func _defeat_active_enemy() -> void:
 			complete_objective("phase3_defeat_starved_wolf")
 		"phase3_road_bandit":
 			complete_objective("phase3_defeat_road_bandit")
+		"ember_wisp":
+			complete_objective("phase10_defeat_ember_wisp", "ashes_beyond_the_stone")
+		"ash_wolf":
+			complete_objective("phase10_defeat_ash_wolf", "ashes_beyond_the_stone")
+		"cinder_acolyte":
+			complete_objective("phase10_defeat_cinder_acolyte", "ashes_beyond_the_stone")
+			_add_varn_zone_whisper("That one learned from a coward or a book. Possibly both.")
+		"cinderheart_guardian":
+			complete_objective("phase10_defeat_cinderheart_guardian", "ashes_beyond_the_stone")
+			if not has_item("cinderheart_remnant"):
+				add_item("cinderheart_remnant", 1)
+			complete_objective("phase10_claim_cinderheart_remnant", "ashes_beyond_the_stone")
+			_add_varn_zone_whisper("Ah. A heart that forgot the body was dead. I sympathize, unfortunately.")
 
 func _award_xp(amount: int) -> void:
 	player["xp"] = int(player["xp"]) + amount
@@ -1203,7 +1218,7 @@ func _check_zone_completion() -> void:
 			var reward: Dictionary = quest_chain.get("completionReward", {})
 			_award_xp(int(reward.get("xp", 0)))
 			player["gold"] = int(player["gold"]) + int(reward.get("gold", 0))
-			if reward.has("itemId"):
+			if reward.has("itemId") and not has_item(str(reward.get("itemId", ""))):
 				add_item(str(reward.get("itemId", "")), 1)
 			if quest_id == "phase3_the_elder_road":
 				match selected_class_id:
@@ -1280,6 +1295,12 @@ func _hazard_message(hazard: Dictionary) -> String:
 func _has_active_resonance(resonance_id: String) -> bool:
 	for resonance_def in active_resonances():
 		if str(resonance_def.get("id", "")) == resonance_id and is_resonance_discovered(resonance_id):
+			return true
+	return false
+
+func _is_item_equipped(item_id: String) -> bool:
+	for item in equipped_items():
+		if str(item.get("itemId", "")) == item_id:
 			return true
 	return false
 

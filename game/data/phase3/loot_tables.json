@@ -37,5 +37,43 @@
       { "itemId": "phase5_identify_scroll", "quantity": 1, "chance": 1.0 }
     ],
     "gold": { "min": 12, "max": 12 }
+  },
+  {
+    "id": "cinder_cache_loot",
+    "entries": [
+      { "itemId": "phase5_identify_scroll", "quantity": 1, "chance": 1.0 },
+      { "itemId": "ash_salve", "quantity": 1, "chance": 1.0 },
+      { "itemId": "ashwood_charm", "quantity": 1, "chance": 1.0 }
+    ],
+    "gold": { "min": 6, "max": 6 }
+  },
+  {
+    "id": "ember_wisp_loot",
+    "entries": [
+      { "itemId": "ash_salve", "quantity": 1, "chance": 1.0 }
+    ],
+    "gold": { "min": 8, "max": 8 }
+  },
+  {
+    "id": "ash_wolf_loot",
+    "entries": [
+      { "itemId": "ash_salve", "quantity": 1, "chance": 1.0 }
+    ],
+    "gold": { "min": 10, "max": 10 }
+  },
+  {
+    "id": "cinder_acolyte_loot",
+    "entries": [
+      { "itemId": "phase5_identify_scroll", "quantity": 1, "chance": 1.0 },
+      { "itemId": "ashwood_charm", "quantity": 1, "chance": 1.0 }
+    ],
+    "gold": { "min": 15, "max": 15 }
+  },
+  {
+    "id": "cinderheart_guardian_loot",
+    "entries": [
+      { "itemId": "phase5_identify_scroll", "quantity": 1, "chance": 1.0 }
+    ],
+    "gold": { "min": 20, "max": 20 }
   }
 ]

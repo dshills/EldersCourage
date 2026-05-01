@@ -200,6 +200,47 @@
     ]
   },
   {
+    "id": "ashwood_charm",
+    "name": "Ashwood Charm",
+    "unidentifiedName": "Smoke-Dimmed Charm",
+    "unidentifiedDescription": "A knotted charm of black root and old ash. It smells faintly of rain that never came.",
+    "type": "trinket",
+    "description": "A knotted charm of black root and old ash. It smells faintly of rain that never came.",
+    "icon": "res://assets/items/fire_rune.png",
+    "quantity": 1,
+    "stackable": false,
+    "equippable": true,
+    "equipmentSlot": "trinket",
+    "stats": { "defense": 1 },
+    "defaultKnowledgeState": "unidentified",
+    "attunable": true,
+    "maxAttunementLevel": 2,
+    "properties": [
+      {
+        "id": "phase10_ashwood_charm_thornward",
+        "name": "Thornward",
+        "description": "Burning Thorn damage is reduced by 2.",
+        "kind": "resource_modifier",
+        "visibility": "locked_by_attunement",
+        "revealed": false,
+        "cursed": false,
+        "requirements": [{ "type": "attunement", "value": 1 }],
+        "effects": [{ "type": "stat_bonus", "stat": "defense", "amount": 0 }]
+      },
+      {
+        "id": "phase10_ashwood_charm_bank_ember",
+        "name": "Banked Ember",
+        "description": "+5 maximum mana.",
+        "kind": "resource_modifier",
+        "visibility": "locked_by_attunement",
+        "revealed": false,
+        "cursed": false,
+        "requirements": [{ "type": "attunement", "value": 2 }],
+        "effects": [{ "type": "stat_bonus", "stat": "maxManaBonus", "amount": 5 }]
+      }
+    ]
+  },
+  {
     "id": "phase9_staff_of_the_ashen_orator",
     "name": "Staff of the Ashen Orator",
     "type": "weapon",

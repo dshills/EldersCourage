@@ -55,5 +55,26 @@
     "stackable": true,
     "equippable": false,
     "effect": { "type": "heal", "amount": 25 }
+  },
+  {
+    "id": "ash_salve",
+    "name": "Ash Salve",
+    "type": "consumable",
+    "description": "A bitter gray salve used by road scouts to treat burns and thorn cuts. Restores 20 health.",
+    "icon": "res://assets/icons/items/consumable_generic.png",
+    "quantity": 1,
+    "stackable": true,
+    "equippable": false,
+    "effect": { "type": "heal", "amount": 20 }
+  },
+  {
+    "id": "cinderheart_remnant",
+    "name": "Cinderheart Remnant",
+    "type": "quest",
+    "description": "A coal-red shard from the heart of Ashwood Glen. It pulses like something deciding whether to wake up.",
+    "icon": "res://assets/items/fire_rune.png",
+    "quantity": 1,
+    "stackable": false,
+    "equippable": false
   }
 ]
