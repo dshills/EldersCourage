@@ -330,6 +330,7 @@ func equip_item(instance_id: String) -> void:
 	player["equipment"] = equipment
 	player["health"] = mini(int(player["health"]), effective_max_health())
 	player["mana"] = mini(int(player["mana"]), effective_max_mana())
+	_reveal_ring_soul_presence(instance_id, "%s is not empty. Something inside it listens." % display_name(item))
 	_process_curses_for_instance(instance_id, "equip")
 	selected_item_id = ""
 	add_message("Equipped %s." % display_name(item), "loot")
@@ -407,6 +408,8 @@ func identify_target_item(target_instance_id: String) -> void:
 		if _property_has_requirement(property, "identify") and not _instance_has_revealed_property(target, str(property.get("id", ""))):
 			has_more_identify = true
 	target["knowledgeState"] = "partially_identified" if has_more_identify else "identified"
+	if RingSouls.reveal_soul_presence(target):
+		add_message("%s is not empty. A will stirs beneath the ash." % display_name(target), "discovery")
 	_replace_inventory_item(target)
 	_decrement_inventory_item(scroll_instance_id)
 	inventory_interaction = { "mode": "normal", "sourceItemInstanceId": "" }
@@ -546,6 +549,12 @@ func has_item(item_id: String) -> bool:
 
 func item_definition(item: Dictionary) -> Dictionary:
 	return items_by_id.get(str(item.get("itemId", item.get("id", ""))), {})
+
+func ring_soul_definition(item: Dictionary) -> Dictionary:
+	return ring_souls_by_id.get(RingSouls.soul_id(item), {})
+
+func ring_soul_reveal_stage(item: Dictionary) -> int:
+	return RingSouls.reveal_stage(item)
 
 func display_name(item: Dictionary) -> String:
 	var definition := item_definition(item)
@@ -950,6 +959,8 @@ func _process_curses_for_instance(instance_id: String, trigger: String) -> void:
 		if not _instance_has_revealed_property(item, property_id):
 			_reveal_property(item, property_id)
 			add_message("Curse revealed: %s." % property.get("name", "Unknown Curse"), "curse")
+			if RingSouls.reveal_soul_presence(item):
+				add_message("%s wakes with the curse." % display_name(item), "discovery")
 			changed = true
 		for effect in property.get("effects", []):
 			if str(effect.get("type", "")) == "health_cost":
@@ -997,8 +1008,60 @@ func _add_attunement_to_instance(instance_id: String, points: int) -> void:
 			if required_level > 0 and new_level >= required_level and not _instance_has_revealed_property(item, str(property.get("id", ""))):
 				_reveal_property(item, str(property.get("id", "")))
 				add_message("New property revealed: %s." % property.get("name", "Unknown Property"), "discovery")
+		_process_ring_soul_attunement(item, new_level)
 	_replace_inventory_item(item)
 	_clamp_resources()
+
+func _reveal_ring_soul_presence(instance_id: String, message: String) -> bool:
+	var item := inventory_item(instance_id)
+	if item.is_empty():
+		return false
+	if not RingSouls.reveal_soul_presence(item):
+		return false
+	_replace_inventory_item(item)
+	add_message(message, "discovery")
+	return true
+
+func _process_ring_soul_attunement(item: Dictionary, new_level: int) -> void:
+	if not RingSouls.has_soul(item):
+		return
+	var soul_definition := ring_soul_definition(item)
+	if soul_definition.is_empty():
+		return
+	if new_level >= 1:
+		if RingSouls.reveal_soul_name(item):
+			add_message("The soul in %s names itself: %s, %s." % [display_name(item), soul_definition.get("name", "Unknown"), soul_definition.get("epithet", "the bound")], "discovery")
+		_reveal_ring_memories_for_attunement(item, 1)
+	if new_level >= 2:
+		if RingSouls.reveal_soul_motivation(item):
+			add_message("%s's hunger clarifies: %s" % [soul_definition.get("name", "The soul"), soul_definition.get("motivation", "")], "discovery")
+		_reveal_ring_memories_for_attunement(item, 2)
+	if new_level >= 3:
+		_reveal_ring_memories_for_attunement(item, 3)
+
+func _reveal_ring_memories_for_attunement(item: Dictionary, level: int) -> void:
+	var soul_definition := ring_soul_definition(item)
+	for memory in soul_definition.get("memories", []):
+		var reveal: Dictionary = memory.get("reveal", {})
+		var reveal_level := int(reveal.get("level", 0))
+		if reveal_level == level and (str(reveal.get("type", "")) == "attunement" or str(reveal.get("type", "")) == "attunement_or_bargain"):
+			_reveal_ring_memory(item, str(memory.get("id", "")))
+
+func _reveal_ring_memory(item: Dictionary, memory_id: String) -> bool:
+	if not RingSouls.mark_memory_revealed(item, memory_id):
+		return false
+	var memory := _ring_memory_definition(item, memory_id)
+	if memory.is_empty():
+		add_message("A ring memory surfaces.", "memory")
+	else:
+		add_message("Memory revealed: %s. %s" % [memory.get("title", "Untitled Memory"), memory.get("text", "")], "memory")
+	return true
+
+func _ring_memory_definition(item: Dictionary, memory_id: String) -> Dictionary:
+	for memory in ring_soul_definition(item).get("memories", []):
+		if str(memory.get("id", "")) == memory_id:
+			return memory
+	return {}
 
 func _attunement_level(points: int) -> int:
 	if points >= 9:
