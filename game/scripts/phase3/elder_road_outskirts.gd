@@ -43,7 +43,7 @@ var quest_panel_box: VBoxContainer
 var skill_bar: HBoxContainer
 var interact_button: Button
 var shrine_button: Button
-var attack_button: TextureButton
+var attack_button: Button
 var restart_button: Button
 var texture_cache := {}
 
@@ -233,16 +233,16 @@ func _build_action_bar() -> Control:
 	bar.add_child(_action_group("Move", _movement_pad()))
 	var location_group := HBoxContainer.new()
 	location_group.add_theme_constant_override("separation", UITheme.BUTTON_GAP)
-	interact_button = _text_button("Open Container", "Open a container on this tile")
+	interact_button = _text_button("Open Container", "Open a container on this tile", "secondary")
 	interact_button.pressed.connect(state.open_current_container)
 	location_group.add_child(interact_button)
-	shrine_button = _text_button("Activate Shrine", "Activate a shrine on this tile")
+	shrine_button = _text_button("Activate Shrine", "Activate a shrine on this tile", "success")
 	shrine_button.pressed.connect(state.activate_current_shrine)
 	location_group.add_child(shrine_button)
 	bar.add_child(_action_group("Location", location_group))
 	var combat_group := HBoxContainer.new()
 	combat_group.add_theme_constant_override("separation", UITheme.BUTTON_GAP)
-	attack_button = _image_button(_load_texture(ATTACK_BUTTON_PATH), "Attack active enemy")
+	attack_button = _image_button(_load_texture(ATTACK_BUTTON_PATH), "Attack active enemy", "primary")
 	attack_button.pressed.connect(state.attack_enemy)
 	combat_group.add_child(attack_button)
 	bar.add_child(_action_group("Combat", combat_group))
@@ -251,16 +251,16 @@ func _build_action_bar() -> Control:
 	bar.add_child(_action_group("Skills", skill_bar))
 	var panel_group := HBoxContainer.new()
 	panel_group.add_theme_constant_override("separation", UITheme.BUTTON_GAP)
-	var inventory_button := _image_button(_load_texture(INVENTORY_BUTTON_PATH), "Toggle inventory")
+	var inventory_button := _image_button(_load_texture(INVENTORY_BUTTON_PATH), "Toggle inventory", "panel")
 	inventory_button.pressed.connect(state.toggle_inventory)
 	panel_group.add_child(inventory_button)
-	var talent_button := _text_button("Talents", "Toggle talent panel")
+	var talent_button := _text_button("Talents", "Toggle talent panel", "panel")
 	talent_button.pressed.connect(state.toggle_talent_panel)
 	panel_group.add_child(talent_button)
-	var quest_button := _image_button(_load_texture(QUEST_BUTTON_PATH), "Quest tracker")
+	var quest_button := _image_button(_load_texture(QUEST_BUTTON_PATH), "Quest tracker", "panel")
 	quest_button.pressed.connect(func() -> void: state.toggle_panel("quests"))
 	panel_group.add_child(quest_button)
-	restart_button = _text_button("Restart", "Restart Phase 3")
+	restart_button = _text_button("Restart", "Restart Phase 3", "danger")
 	restart_button.pressed.connect(state.restart_game)
 	panel_group.add_child(restart_button)
 	bar.add_child(_action_group("Panels", panel_group))
@@ -393,7 +393,7 @@ func _class_card(class_id: String) -> PanelContainer:
 	])
 	preview.add_theme_font_size_override("font_size", 13)
 	box.add_child(preview)
-	var begin := _text_button("Begin Journey", "Start as %s" % class_definition.get("name", class_id))
+	var begin := _text_button("Begin Journey", "Start as %s" % class_definition.get("name", class_id), "primary")
 	begin.pressed.connect(func() -> void: state.start_class(class_id))
 	box.add_child(begin)
 	return card
@@ -559,7 +559,7 @@ func _refresh_skills() -> void:
 		var secondary := "CD %d" % cooldown if cooldown > 0 else ("%d Mana" % cost if str(skill.get("resource", "")) == "mana" and cost > 0 else "Ready")
 		if disabled_reason != "":
 			secondary = disabled_reason
-		var button := _text_button("%s\n%s" % [skill.get("name", skill_id), secondary], _skill_tooltip(skill, cooldown, cost, disabled_reason))
+		var button := _text_button(str(skill.get("name", skill_id)), _skill_tooltip(skill, cooldown, cost, disabled_reason), "magic", secondary)
 		button.custom_minimum_size = Vector2(136, 58)
 		button.disabled = disabled_reason != ""
 		_apply_skill_button_style(button)
@@ -571,7 +571,7 @@ func _refresh_talents() -> void:
 	for child in talent_box.get_children():
 		child.queue_free()
 	var tree: Dictionary = state.current_talent_tree()
-	var close := _text_button("Close", "Close talents")
+	var close := _text_button("Close", "Close talents", "panel")
 	close.pressed.connect(state.close_panel)
 	talent_box.add_child(close)
 	var title := _gold_label("%s  Points: %d" % [tree.get("name", "Talents"), int(state.player.get("talents", {}).get("availablePoints", 0))])
@@ -580,13 +580,11 @@ func _refresh_talents() -> void:
 	var ranks: Dictionary = state.player.get("talents", {}).get("ranks", {})
 	for talent in tree.get("nodes", []):
 		var rank := int(ranks.get(str(talent.get("id", "")), 0))
-		var button := _text_button("%s %d/%d\nLvl %d - %s" % [
+		var button := _text_button("%s %d/%d" % [
 			talent.get("name", "Talent"),
 			rank,
 			int(talent.get("maxRank", 1)),
-			int(talent.get("requiredLevel", 1)),
-			talent.get("description", ""),
-		], "Spend talent point")
+		], "Spend talent point", "success", "Lvl %d - %s" % [int(talent.get("requiredLevel", 1)), talent.get("description", "")])
 		button.custom_minimum_size = Vector2(320, 64)
 		button.disabled = not state.can_spend_talent(talent)
 		button.pressed.connect(func(id := str(talent.get("id", ""))) -> void: state.spend_talent_point(id))
@@ -596,7 +594,7 @@ func _refresh_quest_panel() -> void:
 	quest_panel.visible = str(state.ui.get("activePanel", "")) == "quests" or str(state.ui.get("activePanel", "")) == "log"
 	for child in quest_panel_box.get_children():
 		child.queue_free()
-	var close := _text_button("Close", "Close panel")
+	var close := _text_button("Close", "Close panel", "panel")
 	close.pressed.connect(state.close_panel)
 	quest_panel_box.add_child(close)
 	var title := _gold_label("Quest and Log")
@@ -822,7 +820,7 @@ func _tile_style(tile: Dictionary) -> StyleBoxFlat:
 	return _stylebox(Color(0.09, 0.085, 0.075), Color(0.28, 0.24, 0.18), 2, 5)
 
 func _move_button(text: String, direction: String) -> Button:
-	var button := _text_button(text, "Move %s" % direction)
+	var button := _text_button(text, "Move %s" % direction, "secondary")
 	button.custom_minimum_size = Vector2(44, 28)
 	button.pressed.connect(func() -> void: state.move_player(direction))
 	return button
@@ -857,31 +855,60 @@ func _apply_skill_button_style(button: Button) -> void:
 		"gravebound_scout":
 			button.add_theme_stylebox_override("normal", _stylebox(Color(0.08, 0.11, 0.09), Color(0.38, 0.62, 0.48), 2, 5))
 
-func _text_button(text: String, tooltip: String) -> Button:
+func _text_button(text: String, tooltip: String, variant: String = "secondary", sublabel: String = "") -> Button:
 	var button := Button.new()
-	button.text = text
+	button.text = text if sublabel == "" else "%s\n%s" % [text, sublabel]
 	button.tooltip_text = tooltip
 	button.focus_mode = Control.FOCUS_ALL
 	button.custom_minimum_size = Vector2(132, 42)
-	button.add_theme_stylebox_override("normal", _stylebox(Color(0.15, 0.10, 0.06), UITheme.color("border_gold"), 2, 5))
-	button.add_theme_stylebox_override("hover", _stylebox(Color(0.20, 0.13, 0.07), Color(0.90, 0.66, 0.28), 2, 5))
-	button.add_theme_stylebox_override("focus", _stylebox(Color(0.18, 0.12, 0.07), Color(1.0, 0.82, 0.34), 3, 5))
-	button.add_theme_stylebox_override("disabled", _stylebox(UITheme.color("disabled_fill"), UITheme.color("disabled_border"), 2, 5))
+	_apply_button_variant(button, variant)
 	button.add_theme_color_override("font_color", UITheme.color("text_primary"))
 	button.add_theme_color_override("font_disabled_color", UITheme.color("disabled_text"))
 	button.add_theme_font_size_override("font_size", UITheme.FONT_BUTTON)
 	return button
 
-func _image_button(texture: Texture2D, tooltip: String) -> TextureButton:
-	var button := TextureButton.new()
-	button.texture_normal = texture
-	button.texture_hover = texture
-	button.texture_pressed = texture
+func _image_button(texture: Texture2D, tooltip: String, variant: String = "panel") -> Button:
+	var button := Button.new()
+	button.icon = texture
+	button.expand_icon = true
 	button.focus_mode = Control.FOCUS_ALL
-	button.custom_minimum_size = Vector2(150, 54)
-	button.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
+	button.custom_minimum_size = Vector2(92, 54)
 	button.tooltip_text = tooltip
+	_apply_button_variant(button, variant)
 	return button
+
+func _apply_button_variant(button: Button, variant: String, selected := false) -> void:
+	var fill := Color(0.15, 0.10, 0.06)
+	var hover := Color(0.20, 0.13, 0.07)
+	var border := UITheme.color("border_gold")
+	match variant:
+		"primary":
+			fill = Color(0.18, 0.10, 0.045)
+			hover = Color(0.24, 0.13, 0.05)
+			border = Color(0.92, 0.54, 0.20)
+		"danger":
+			fill = Color(0.14, 0.06, 0.045)
+			hover = Color(0.20, 0.075, 0.045)
+			border = UITheme.color("danger")
+		"magic":
+			fill = Color(0.065, 0.09, 0.12)
+			hover = Color(0.075, 0.12, 0.16)
+			border = UITheme.color("magic")
+		"success":
+			fill = Color(0.065, 0.11, 0.075)
+			hover = Color(0.08, 0.15, 0.095)
+			border = UITheme.color("success")
+		"panel":
+			fill = Color(0.10, 0.075, 0.052)
+			hover = Color(0.15, 0.10, 0.06)
+			border = Color(0.58, 0.43, 0.20)
+	if selected:
+		border = Color(1.0, 0.82, 0.34)
+	button.add_theme_stylebox_override("normal", _stylebox(fill, border, 2 if not selected else 3, 5))
+	button.add_theme_stylebox_override("hover", _stylebox(hover, Color(0.90, 0.66, 0.28), 2, 5))
+	button.add_theme_stylebox_override("focus", _stylebox(hover, Color(1.0, 0.82, 0.34), 3, 5))
+	button.add_theme_stylebox_override("pressed", _stylebox(fill.darkened(0.15), border, 2, 5))
+	button.add_theme_stylebox_override("disabled", _stylebox(UITheme.color("disabled_fill"), UITheme.color("disabled_border"), 2, 5))
 
 func _add_section(parent: Control, title: String) -> VBoxContainer:
 	var panel := PanelContainer.new()
@@ -899,6 +926,8 @@ func _stat_bar() -> ProgressBar:
 	var bar := ProgressBar.new()
 	bar.custom_minimum_size = Vector2(0, 12)
 	bar.show_percentage = false
+	bar.add_theme_stylebox_override("background", _stylebox(Color(0.16, 0.12, 0.08), Color(0.32, 0.24, 0.14), 1, 4))
+	bar.add_theme_stylebox_override("fill", _stylebox(Color(0.64, 0.33, 0.14), Color(0.64, 0.33, 0.14), 0, 4))
 	return bar
 
 func _action_group(title: String, content: Control) -> PanelContainer:
