@@ -23,6 +23,9 @@ var header_meta_label: Label
 var header_debug_label: Label
 var header_xp_bar: ProgressBar
 var stats_label: Label
+var health_label: Label
+var mana_label: Label
+var side_xp_label: Label
 var health_bar: ProgressBar
 var mana_bar: ProgressBar
 var side_xp_bar: ProgressBar
@@ -210,10 +213,19 @@ func _build_side_panel() -> Control:
 	var character_box := _add_section(box, "Character Summary")
 	stats_label = _dark_label("")
 	character_box.add_child(stats_label)
+	health_label = _dark_label("")
+	health_label.add_theme_font_size_override("font_size", 13)
+	character_box.add_child(health_label)
 	health_bar = _stat_bar()
 	character_box.add_child(health_bar)
+	mana_label = _dark_label("")
+	mana_label.add_theme_font_size_override("font_size", 13)
+	character_box.add_child(mana_label)
 	mana_bar = _stat_bar()
 	character_box.add_child(mana_bar)
+	side_xp_label = _dark_label("")
+	side_xp_label.add_theme_font_size_override("font_size", 13)
+	character_box.add_child(side_xp_label)
 	side_xp_bar = _stat_bar()
 	character_box.add_child(side_xp_bar)
 	var equipment_box := _add_section(box, "Equipment")
@@ -530,30 +542,27 @@ func _refresh_map() -> void:
 
 func _refresh_stats() -> void:
 	var stats: Dictionary = state.effective_stats()
-	stats_label.text = "%s - Level %d\nHealth %d/%d   Mana %d/%d\nXP %d/%d\nSTR %d   DEF %d   SPELL %d" % [
+	stats_label.text = "%s - Level %d\nSTR %d   DEF %d   SPELL %d" % [
 		state.current_class().get("name", "Choose Class"),
 		int(state.player.get("level", 1)),
-		int(state.player.get("health", 0)),
-		state.effective_max_health(),
-		int(state.player.get("mana", 0)),
-		state.effective_max_mana(),
-		int(state.player.get("xp", 0)),
-		int(state.player.get("xpToNextLevel", 50)),
 		int(stats.get("strength", 0)),
 		int(stats.get("defense", 0)),
 		int(stats.get("spellPower", 0)),
 	]
+	health_label.text = "Health  %d/%d" % [int(state.player.get("health", 0)), state.effective_max_health()]
 	health_bar.max_value = float(maxi(1, state.effective_max_health()))
 	health_bar.value = float(state.player.get("health", 0))
+	mana_label.text = "Mana    %d/%d" % [int(state.player.get("mana", 0)), state.effective_max_mana()]
 	mana_bar.max_value = float(maxi(1, state.effective_max_mana()))
 	mana_bar.value = float(state.player.get("mana", 0))
+	side_xp_label.text = "XP      %d/%d" % [int(state.player.get("xp", 0)), int(state.player.get("xpToNextLevel", 50))]
 	side_xp_bar.max_value = float(maxi(1, int(state.player.get("xpToNextLevel", 50))))
 	side_xp_bar.value = float(state.player.get("xp", 0))
 	var equipment: Dictionary = state.player.get("equipment", {})
 	equipment_label.text = "Weapon   %s\nArmor    %s\nTrinket  %s" % [
-		_equipped_name(str(equipment.get("weapon", ""))),
-		_equipped_name(str(equipment.get("armor", ""))),
-		_equipped_name(str(equipment.get("trinket", ""))),
+		_equipped_name_rich(str(equipment.get("weapon", ""))),
+		_equipped_name_rich(str(equipment.get("armor", ""))),
+		_equipped_name_rich(str(equipment.get("trinket", ""))),
 	]
 
 func _refresh_skills() -> void:
@@ -971,6 +980,12 @@ func _equipped_name(instance_id: String) -> String:
 	if item.is_empty():
 		return "empty"
 	return state.display_name(item)
+
+func _equipped_name_rich(instance_id: String) -> String:
+	var name := _equipped_name(instance_id)
+	if name == "empty":
+		return "[color=#6f5f43]Empty[/color]"
+	return "[color=#f0d680]%s[/color]" % name
 
 func _stats_text(stats) -> String:
 	if typeof(stats) != TYPE_DICTIONARY or stats.is_empty():
