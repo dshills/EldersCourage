@@ -193,14 +193,14 @@ func _build_map_panel() -> PanelContainer:
 	map_grid.add_theme_constant_override("v_separation", UITheme.TILE_GAP)
 	content.add_child(map_grid)
 	var detail_panel := PanelContainer.new()
-	detail_panel.custom_minimum_size = Vector2(260, 0)
+	detail_panel.custom_minimum_size = Vector2(220, 0)
 	detail_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	detail_panel.add_theme_stylebox_override("panel", _stylebox(Color(0.10, 0.078, 0.055), UITheme.color("border_muted"), 1, 6))
 	content.add_child(detail_panel)
 	location_details = RichTextLabel.new()
 	location_details.bbcode_enabled = true
 	location_details.fit_content = true
-	location_details.custom_minimum_size = Vector2(240, 0)
+	location_details.custom_minimum_size = Vector2(200, 0)
 	location_details.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	location_details.add_theme_font_size_override("normal_font_size", 14)
 	detail_panel.add_child(location_details)
@@ -208,7 +208,7 @@ func _build_map_panel() -> PanelContainer:
 
 func _build_side_panel() -> Control:
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(390, 0)
+	panel.custom_minimum_size = Vector2(360, 0)
 	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	panel.add_theme_stylebox_override("panel", _stylebox(UITheme.color("panel_parchment"), Color(0.40, 0.25, 0.12), 2, 8))
 	var box := VBoxContainer.new()
@@ -529,7 +529,7 @@ func _refresh_map() -> void:
 	)
 	for tile in tiles:
 		var button := Button.new()
-		button.custom_minimum_size = Vector2(146, 104)
+		button.custom_minimum_size = Vector2(126, 96)
 		button.focus_mode = Control.FOCUS_ALL
 		var texture := _tile_texture(str(tile.get("kind", "road")))
 		button.icon = texture
