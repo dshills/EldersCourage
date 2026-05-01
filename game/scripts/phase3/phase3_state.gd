@@ -4,11 +4,13 @@ signal state_changed
 
 const RingSouls := preload("res://scripts/phase8/ring_souls.gd")
 const ItemResonance := preload("res://scripts/phase9/item_resonance.gd")
+const ItemMerging := preload("res://scripts/phase9/item_merging.gd")
 const MAX_MESSAGES := 10
 
 var items_by_id := {}
 var ring_souls_by_id := {}
 var item_resonances_by_id := {}
+var item_merges_by_id := {}
 var enemies_by_id := {}
 var loot_tables_by_id := {}
 var containers_by_id := {}
@@ -47,6 +49,7 @@ func reset() -> void:
 		items_by_id[item_id] = phase5_items[item_id]
 	ring_souls_by_id = _load_records_by_id("res://data/phase8/ring_souls.json")
 	item_resonances_by_id = _load_records_by_id("res://data/phase9/item_resonances.json")
+	item_merges_by_id = _load_records_by_id("res://data/phase9/item_merges.json")
 	enemies_by_id = _load_records_by_id("res://data/phase3/enemies.json")
 	loot_tables_by_id = _load_records_by_id("res://data/phase3/loot_tables.json")
 	containers_by_id = _load_records_by_id("res://data/phase3/containers.json")
@@ -611,6 +614,15 @@ func hinted_resonances() -> Array[Dictionary]:
 func is_resonance_discovered(resonance_id: String) -> bool:
 	return ItemResonance.is_discovered(self, resonance_id)
 
+func available_merge_recipes() -> Array[Dictionary]:
+	return ItemMerging.get_available_recipes(self)
+
+func hinted_merge_recipes() -> Array[Dictionary]:
+	return ItemMerging.get_hinted_recipes(self)
+
+func can_merge_recipe(recipe_id: String) -> bool:
+	return ItemMerging.can_merge(self, item_merges_by_id.get(recipe_id, {}))
+
 func resonance_stats() -> Dictionary:
 	return ItemResonance.stat_bonuses(self)
 
@@ -628,6 +640,44 @@ func process_resonance_trigger(trigger: String, context: Dictionary = {}) -> voi
 	for resonance_def in discovered:
 		add_message(str(resonance_def.get("discoveryMessage", "Resonance discovered.")), "resonance")
 		_add_resonance_whisper(resonance_def)
+
+func merge_recipe(recipe_id: String) -> void:
+	var recipe: Dictionary = item_merges_by_id.get(recipe_id, {})
+	if recipe.is_empty() or not ItemMerging.can_merge(self, recipe):
+		add_message("That merge is not ready.", "warning")
+		return
+	var source_items: Array[Dictionary] = []
+	for item_id in recipe.get("requiredItemIds", []):
+		var source_item := first_inventory_item_by_item_id(str(item_id))
+		if source_item.is_empty():
+			add_message("Missing item for merge.", "warning")
+			return
+		source_items.append(source_item.duplicate(true))
+	var carried_soul := {}
+	var carried_blood_price_revealed := false
+	for source_item in source_items:
+		if str(source_item.get("itemId", "")) == "phase5_ashen_ring":
+			carried_soul = source_item.get("soul", {}).duplicate(true)
+			carried_blood_price_revealed = _instance_has_revealed_property(source_item, "phase5_ashen_ring_blood_price")
+	add_message(str(recipe.get("startMessage", "The merge begins.")), "merge")
+	for source_item in source_items:
+		_remove_inventory_item_instance(str(source_item.get("instanceId", "")))
+	var result_item := _make_item_instance(str(recipe.get("resultItemId", "")), 1)
+	if not carried_soul.is_empty():
+		result_item["soul"] = carried_soul
+	if carried_blood_price_revealed:
+		_reveal_property(result_item, "phase9_staff_blood_price_carried")
+	var inventory: Array = player.get("inventory", [])
+	inventory.append(result_item)
+	player["inventory"] = inventory
+	player["equipment"]["weapon"] = str(result_item.get("instanceId", ""))
+	player["equipment"]["trinket"] = ""
+	add_message(str(recipe.get("completeMessage", "Merge complete.")), "merge")
+	var whisper := str(recipe.get("whisper", ""))
+	if whisper != "":
+		add_message("Varn whispers: \"%s\"" % whisper, "ring_whisper")
+	selected_item_id = str(result_item.get("instanceId", ""))
+	state_changed.emit()
 
 func display_name(item: Dictionary) -> String:
 	var definition := item_definition(item)
@@ -955,6 +1005,16 @@ func _decrement_inventory_item(instance_id: String) -> void:
 			if int(item["quantity"]) <= 0:
 				_clear_equipment_reference(instance_id)
 				inventory.remove_at(index)
+			player["inventory"] = inventory
+			return
+
+func _remove_inventory_item_instance(instance_id: String) -> void:
+	var inventory: Array = player.get("inventory", [])
+	for index in range(inventory.size()):
+		var item: Dictionary = inventory[index]
+		if str(item.get("instanceId", "")) == instance_id:
+			_clear_equipment_reference(instance_id)
+			inventory.remove_at(index)
 			player["inventory"] = inventory
 			return
 
