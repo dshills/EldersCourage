@@ -972,14 +972,25 @@ func _process_curses_for_instance(instance_id: String, trigger: String) -> void:
 			if str(effect.get("type", "")) == "health_cost":
 				health_cost += int(effect.get("amount", 0))
 	if health_cost > 0:
-		player["health"] = maxi(0, int(player.get("health", 0)) - health_cost)
-		add_message("%s exacts a blood price for %d health." % [display_name(item), health_cost], "curse")
-		if int(player["health"]) <= 0:
+		var current_health := int(player.get("health", 0))
+		var minimum_health := _minimum_health_after_curse(item)
+		player["health"] = maxi(minimum_health, current_health - health_cost)
+		var paid_health := current_health - int(player["health"])
+		if paid_health > 0:
+			add_message("%s exacts a blood price for %d health." % [display_name(item), paid_health], "curse")
+		else:
+			add_message("%s hungers for blood, but cannot take your last breath." % display_name(item), "curse")
+		if minimum_health == 0 and int(player["health"]) <= 0:
 			defeated = true
 			add_message("You are defeated. Restart to try again.", "warning")
 	if changed:
 		_replace_inventory_item(item)
 		_clamp_resources()
+
+func _minimum_health_after_curse(item: Dictionary) -> int:
+	if str(item.get("itemId", "")) == "phase5_ashen_ring":
+		return 1
+	return 0
 
 func _process_attunement_after_victory() -> void:
 	for item in equipped_items():
