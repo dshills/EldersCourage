@@ -294,6 +294,7 @@ func use_skill(skill_id: String) -> void:
 	_process_curses_for_equipped("combat_use")
 	_process_ring_whisper_for_equipped("on_skill_use", { "skillId": skill_id })
 	process_resonance_trigger("skill_use", { "skillId": skill_id })
+	_process_resonance_health_costs(skill_id)
 	_add_attunement_for_slot("trinket", 1)
 	var damage_total := 0
 	var healing_total := 0
@@ -580,6 +581,15 @@ func item_has_revealed_property(item_id: String, property_id: String) -> bool:
 			return true
 	return false
 
+func has_accepted_ring_bargain(bargain_id: String) -> bool:
+	for item in player.get("inventory", []):
+		if not RingSouls.has_soul(item):
+			continue
+		var soul: Dictionary = item.get("soul", {})
+		if soul.get("bargainIdsAccepted", []).has(bargain_id):
+			return true
+	return false
+
 func item_definition(item: Dictionary) -> Dictionary:
 	return items_by_id.get(str(item.get("itemId", item.get("id", ""))), {})
 
@@ -600,6 +610,18 @@ func hinted_resonances() -> Array[Dictionary]:
 
 func is_resonance_discovered(resonance_id: String) -> bool:
 	return ItemResonance.is_discovered(self, resonance_id)
+
+func resonance_stats() -> Dictionary:
+	return ItemResonance.stat_bonuses(self)
+
+func resonance_skill_damage_bonus(skill_id: String) -> int:
+	return ItemResonance.skill_damage_bonus(self, skill_id)
+
+func resonance_skill_heal_bonus(skill_id: String) -> int:
+	return ItemResonance.skill_heal_bonus(self, skill_id)
+
+func resonance_skill_cost_modifier(skill_id: String) -> int:
+	return ItemResonance.skill_cost_modifier(self, skill_id)
 
 func process_resonance_trigger(trigger: String, context: Dictionary = {}) -> void:
 	var discovered := ItemResonance.process_trigger(self, trigger, context)
@@ -676,13 +698,16 @@ func effective_stats() -> Dictionary:
 	var item_stats := revealed_item_stats()
 	for stat in item_stats.keys():
 		result[stat] = int(result.get(stat, 0)) + int(item_stats[stat])
+	var resonance_bonus := resonance_stats()
+	for stat in resonance_bonus.keys():
+		result[stat] = int(result.get(stat, 0)) + int(resonance_bonus[stat])
 	return result
 
 func effective_max_health() -> int:
-	return int(player["maxHealth"]) + int(equipment_stats().get("maxHealthBonus", 0)) + int(talent_stats().get("maxHealthBonus", 0)) + int(revealed_item_stats().get("maxHealthBonus", 0))
+	return int(player["maxHealth"]) + int(equipment_stats().get("maxHealthBonus", 0)) + int(talent_stats().get("maxHealthBonus", 0)) + int(revealed_item_stats().get("maxHealthBonus", 0)) + int(resonance_stats().get("maxHealthBonus", 0))
 
 func effective_max_mana() -> int:
-	return int(player["maxMana"]) + int(equipment_stats().get("maxManaBonus", 0)) + int(talent_stats().get("maxManaBonus", 0)) + int(revealed_item_stats().get("maxManaBonus", 0))
+	return int(player["maxMana"]) + int(equipment_stats().get("maxManaBonus", 0)) + int(talent_stats().get("maxManaBonus", 0)) + int(revealed_item_stats().get("maxManaBonus", 0)) + int(resonance_stats().get("maxManaBonus", 0))
 
 func player_damage(enemy: Dictionary) -> int:
 	return maxi(1, 8 + int(effective_stats().get("strength", 0)) + revealed_basic_damage_bonus() - int(enemy.get("defense", 0)))
@@ -712,10 +737,13 @@ func skill_effect_amount(skill: Dictionary, effect: Dictionary) -> int:
 	if str(effect.get("type", "")) == "damage":
 		amount += talent_skill_amount(str(skill.get("id", "")), "skill_damage_bonus")
 		amount += revealed_skill_damage_bonus(str(skill.get("id", "")))
+		amount += resonance_skill_damage_bonus(str(skill.get("id", "")))
+	elif str(effect.get("type", "")) == "heal":
+		amount += resonance_skill_heal_bonus(str(skill.get("id", "")))
 	return maxi(1, amount) if str(effect.get("type", "")) == "damage" else amount
 
 func effective_skill_cost(skill: Dictionary) -> int:
-	return maxi(0, int(skill.get("resourceCost", 0)) - talent_skill_amount(str(skill.get("id", "")), "resource_cost_reduction") + revealed_mana_cost_modifier(str(skill.get("id", ""))))
+	return maxi(0, int(skill.get("resourceCost", 0)) - talent_skill_amount(str(skill.get("id", "")), "resource_cost_reduction") + revealed_mana_cost_modifier(str(skill.get("id", ""))) + resonance_skill_cost_modifier(str(skill.get("id", ""))))
 
 func effective_skill_cooldown(skill: Dictionary) -> int:
 	return maxi(0, int(skill.get("cooldownTurns", 0)) - talent_skill_amount(str(skill.get("id", "")), "cooldown_reduction"))
@@ -1053,6 +1081,18 @@ func _minimum_health_after_curse(item: Dictionary) -> int:
 	if str(item.get("itemId", "")) == "phase5_ashen_ring":
 		return 1
 	return 0
+
+func _process_resonance_health_costs(skill_id: String) -> void:
+	var health_cost := ItemResonance.health_cost(self, skill_id)
+	if health_cost <= 0:
+		return
+	var current_health := int(player.get("health", 0))
+	player["health"] = maxi(1, current_health - health_cost)
+	var paid_health := current_health - int(player["health"])
+	if paid_health > 0:
+		add_message("Resonance exacts an additional blood price for %d health." % paid_health, "curse")
+	else:
+		add_message("The resonance hungers, but cannot take your last breath.", "curse")
 
 func _process_attunement_after_victory() -> void:
 	for item in equipped_items():

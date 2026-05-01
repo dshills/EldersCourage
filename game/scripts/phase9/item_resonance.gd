@@ -32,6 +32,51 @@ static func get_hinted_resonances(game_state) -> Array[Dictionary]:
 			result.append(resonance)
 	return result
 
+static func get_effects(game_state) -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	for resonance in get_discovered_active_resonances(game_state):
+		for effect in resonance.get("effects", []):
+			if _effect_condition_met(game_state, effect):
+				result.append(effect)
+	return result
+
+static func stat_bonuses(game_state) -> Dictionary:
+	var result := { "strength": 0, "defense": 0, "spellPower": 0, "maxHealthBonus": 0, "maxManaBonus": 0 }
+	for effect in get_effects(game_state):
+		var effect_type := str(effect.get("type", ""))
+		if effect_type != "stat_bonus" and effect_type != "stat_penalty":
+			continue
+		var stat := str(effect.get("stat", ""))
+		if result.has(stat):
+			result[stat] = int(result[stat]) + int(effect.get("amount", 0))
+	return result
+
+static func skill_damage_bonus(game_state, skill_id: String) -> int:
+	return _skill_amount(game_state, skill_id, "skill_damage_bonus")
+
+static func skill_heal_bonus(game_state, skill_id: String) -> int:
+	return _skill_amount(game_state, skill_id, "skill_heal_bonus")
+
+static func skill_cost_modifier(game_state, skill_id: String) -> int:
+	var total := 0
+	for effect in get_effects(game_state):
+		if str(effect.get("type", "")) != "skill_cost_modifier":
+			continue
+		if effect.has("skillId") and str(effect.get("skillId", "")) != skill_id:
+			continue
+		total += int(effect.get("amount", 0))
+	return total
+
+static func health_cost(game_state, skill_id: String) -> int:
+	var total := 0
+	for effect in get_effects(game_state):
+		if str(effect.get("type", "")) != "curse_health_cost":
+			continue
+		if effect.has("skillId") and str(effect.get("skillId", "")) != skill_id:
+			continue
+		total += int(effect.get("amount", 0))
+	return total
+
 static func is_discovered(game_state, resonance_id: String) -> bool:
 	return game_state.resonance.get("discoveredResonanceIds", []).has(resonance_id)
 
@@ -41,6 +86,19 @@ static func mark_discovered(game_state, resonance_id: String) -> bool:
 	var discovered: Array = game_state.resonance.get("discoveredResonanceIds", [])
 	discovered.append(resonance_id)
 	game_state.resonance["discoveredResonanceIds"] = discovered
+	return true
+
+static func _skill_amount(game_state, skill_id: String, effect_type: String) -> int:
+	var total := 0
+	for effect in get_effects(game_state):
+		if str(effect.get("type", "")) == effect_type and str(effect.get("skillId", "")) == skill_id:
+			total += int(effect.get("amount", 0))
+	return total
+
+static func _effect_condition_met(game_state, effect: Dictionary) -> bool:
+	var bargain_id := str(effect.get("requiresAcceptedBargainId", ""))
+	if bargain_id != "" and not game_state.has_accepted_ring_bargain(bargain_id):
+		return false
 	return true
 
 static func mark_triggered(game_state, resonance_id: String) -> bool:
