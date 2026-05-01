@@ -4,7 +4,7 @@ const Phase3State := preload("res://scripts/phase3/phase3_state.gd")
 const UITheme := preload("res://scripts/ui/ui_theme.gd")
 const UIViewModels := preload("res://scripts/ui/ui_view_models.gd")
 const UI_THEME_PATH := "res://resources/themes/elders_courage_theme.tres"
-const TITLE_PLAQUE_PATH := "res://assets/ui/title_plaque.png"
+const TITLE_PLAQUE_PATH := "res://assets/ui/title_plaque_padded.png"
 const ATTACK_BUTTON_PATH := "res://assets/ui/button_attack.png"
 const INVENTORY_BUTTON_PATH := "res://assets/ui/button_inventory.png"
 const QUEST_BUTTON_PATH := "res://assets/ui/button_quests.png"
@@ -1012,17 +1012,9 @@ func _load_texture(path: String) -> Texture2D:
 	if error != OK:
 		image = Image.create(16, 16, false, Image.FORMAT_RGBA8)
 		image.fill(Color(0.45, 0.34, 0.18, 1.0))
-	elif path == TITLE_PLAQUE_PATH:
-		image = _image_with_vertical_padding(image, 14, 10)
 	var texture := ImageTexture.create_from_image(image)
 	texture_cache[path] = texture
 	return texture
-
-func _image_with_vertical_padding(image: Image, top_padding: int, bottom_padding: int) -> Image:
-	var padded := Image.create(image.get_width(), image.get_height() + top_padding + bottom_padding, false, Image.FORMAT_RGBA8)
-	padded.fill(Color(0, 0, 0, 0))
-	padded.blit_rect(image, Rect2i(Vector2i.ZERO, image.get_size()), Vector2i(0, top_padding))
-	return padded
 
 func _blank_spacer() -> Control:
 	var spacer := Control.new()
