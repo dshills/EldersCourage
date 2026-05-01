@@ -234,6 +234,7 @@ func move_player(direction: String) -> void:
 	_mark_current_tile_visited()
 	_set_ui_animation("movement", "map")
 	add_message("You travel %s to %s." % [direction, tile.get("name", "the road")], "info")
+	trigger_tile_hazard(tile, "on_enter_tile")
 	if tile.has("encounterId") and not completed_encounters.has(str(tile["encounterId"])):
 		start_encounter(str(tile["encounterId"]))
 	if str(tile.get("kind", "")) == "elder_stone":
@@ -275,6 +276,16 @@ func activate_current_shrine() -> void:
 		add_message("There is no shrine here.", "warning")
 		return
 	activate_shrine(shrine_id)
+
+func interact_current_tile() -> void:
+	var tile := current_tile()
+	if tile.has("hazardId"):
+		trigger_tile_hazard(tile, "on_interact")
+	elif str(tile.get("kind", "")) == "cairn":
+		complete_objective(str(tile.get("objectiveId", "phase10_investigate_broken_cairn")), "ashes_beyond_the_stone")
+		add_message("You read the broken cairn. The stones were split by heat from below.", "discovery")
+	else:
+		add_message("There is nothing to interact with here.", "warning")
 
 func activate_shrine(shrine_id: String) -> void:
 	var shrine: Dictionary = shrines_by_id.get(shrine_id, {})
@@ -756,6 +767,31 @@ func hinted_merge_recipes() -> Array[Dictionary]:
 func can_merge_recipe(recipe_id: String) -> bool:
 	return ItemMerging.can_merge(self, item_merges_by_id.get(recipe_id, {}))
 
+func hazard_completed(hazard_id: String) -> bool:
+	return completed_hazards.has(hazard_id)
+
+func trigger_tile_hazard(tile: Dictionary, trigger: String) -> void:
+	var hazard_id := str(tile.get("hazardId", ""))
+	if hazard_id == "":
+		return
+	var hazard: Dictionary = hazards_by_id.get(hazard_id, {})
+	if hazard.is_empty() or str(hazard.get("trigger", "")) != trigger:
+		return
+	if hazard_completed(hazard_id) and not bool(hazard.get("repeatable", false)):
+		return
+	match hazard_id:
+		"burning_thorn_001":
+			_apply_burning_thorn(hazard)
+			complete_objective("phase10_clear_burning_thorn", "ashes_beyond_the_stone")
+		"cinder_pool_001":
+			_apply_cinder_pool(hazard)
+			complete_objective("phase10_discover_cinder_pool", "ashes_beyond_the_stone")
+		_:
+			_apply_generic_hazard(hazard)
+	completed_hazards[hazard_id] = true
+	get_current_zone_state().get("completedHazardIds", {})[hazard_id] = true
+	state_changed.emit()
+
 func open_merge_panel_for_item(instance_id: String) -> void:
 	var item := inventory_item(instance_id)
 	if item.is_empty():
@@ -1191,6 +1227,61 @@ func _objectives_complete(objectives: Array) -> bool:
 		if not bool(objective.get("completed", false)):
 			return false
 	return true
+
+func _apply_burning_thorn(hazard: Dictionary) -> void:
+	var damage := _hazard_base_amount(hazard)
+	var mitigated := false
+	if int(effective_stats().get("defense", 0)) >= 4:
+		damage = mini(damage, 3)
+		mitigated = true
+	if _has_active_resonance("coal_remembers_flame"):
+		damage = maxi(1, damage - 2)
+		mitigated = true
+		add_message("Coal Remembers Flame steadies the heat around you.", "resonance")
+	if item_has_revealed_property("ashwood_charm", "phase10_ashwood_charm_thornward"):
+		damage = maxi(1, damage - 2)
+		mitigated = true
+	player["health"] = maxi(1, int(player.get("health", 1)) - damage)
+	var text := _hazard_message(hazard).replace("{damage}", str(damage))
+	if mitigated:
+		text += " You blunt the worst of it."
+	add_message(text, "hazard")
+
+func _apply_cinder_pool(hazard: Dictionary) -> void:
+	var amount := _hazard_base_amount(hazard)
+	var resource := "health"
+	if selected_class_id == "ember_sage" and int(player.get("mana", 0)) > 0:
+		resource = "mana"
+		player["mana"] = maxi(0, int(player.get("mana", 0)) - amount)
+	else:
+		player["health"] = maxi(1, int(player.get("health", 1)) - amount)
+	add_message(_hazard_message(hazard).replace("{resource}", resource).replace("{amount}", str(amount)), "hazard")
+	_add_varn_zone_whisper("Failed fire. It curdled instead of consuming. Amateur work.")
+	if _has_active_resonance("coal_remembers_flame"):
+		add_message("Coal Remembers Flame answers the pool with a steady ember.", "resonance")
+
+func _apply_generic_hazard(hazard: Dictionary) -> void:
+	var damage := _hazard_base_amount(hazard)
+	player["health"] = maxi(1, int(player.get("health", 1)) - damage)
+	add_message(_hazard_message(hazard).replace("{damage}", str(damage)), "hazard")
+
+func _hazard_base_amount(hazard: Dictionary) -> int:
+	for effect in hazard.get("effects", []):
+		if str(effect.get("type", "")) == "damage_player" or str(effect.get("type", "")) == "class_resource_loss":
+			return int(effect.get("amount", 0))
+	return 0
+
+func _hazard_message(hazard: Dictionary) -> String:
+	for effect in hazard.get("effects", []):
+		if str(effect.get("type", "")) == "message":
+			return str(effect.get("text", "%s harms you." % hazard.get("name", "The hazard")))
+	return "%s harms you." % hazard.get("name", "The hazard")
+
+func _has_active_resonance(resonance_id: String) -> bool:
+	for resonance_def in active_resonances():
+		if str(resonance_def.get("id", "")) == resonance_id and is_resonance_discovered(resonance_id):
+			return true
+	return false
 
 func _quest_stage_complete(quest_id: String, stage_id: String) -> bool:
 	for chain in quest_chains_by_zone_id.values():

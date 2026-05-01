@@ -860,6 +860,8 @@ func _interact() -> void:
 		state.activate_current_shrine()
 	elif tile.has("encounterId"):
 		state.start_encounter(str(tile["encounterId"]))
+	elif tile.has("hazardId") or str(tile.get("kind", "")) == "cairn":
+		state.interact_current_tile()
 	else:
 		state.add_message("There is nothing to interact with here.", "warning")
 
@@ -1351,6 +1353,10 @@ func _message_color(type: String) -> Color:
 			return Color(0.58, 0.78, 0.72)
 		"merge":
 			return Color(0.95, 0.78, 0.42)
+		"hazard":
+			return Color(0.94, 0.38, 0.22)
+		"transition":
+			return Color(0.58, 0.78, 0.92)
 		_:
 			return UITheme.color("text_dark")
 
@@ -1378,6 +1384,10 @@ func _message_label(type: String) -> String:
 			return "Resonance"
 		"merge":
 			return "Merge"
+		"hazard":
+			return "Hazard"
+		"transition":
+			return "Travel"
 		_:
 			return "Info"
 
