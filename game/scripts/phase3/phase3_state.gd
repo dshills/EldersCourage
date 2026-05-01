@@ -462,6 +462,9 @@ func _set_ui_animation(event_type: String, target_id: String = "") -> void:
 	ui["lastAnimation"] = { "id": "ui_%d" % Time.get_ticks_msec(), "type": event_type, "targetId": target_id, "createdAt": Time.get_ticks_msec() }
 
 func handle_escape() -> void:
+	if not ui.get("pendingBargain", {}).is_empty():
+		add_message("Answer the ring's bargain first.", "warning")
+		return
 	if str(inventory_interaction.get("mode", "normal")) == "identify_target":
 		cancel_item_target_mode()
 		return
@@ -693,6 +696,19 @@ func revealed_skill_damage_bonus(skill_id: String) -> int:
 			for effect in property.get("effects", []):
 				if str(effect.get("type", "")) == "damage_bonus" and str(effect.get("skillId", "")) == skill_id:
 					total += int(effect.get("amount", 0))
+		total += accepted_ring_bargain_damage_bonus(item, skill_id)
+	return total
+
+func accepted_ring_bargain_damage_bonus(item: Dictionary, skill_id: String) -> int:
+	if not RingSouls.has_soul(item):
+		return 0
+	var total := 0
+	var soul: Dictionary = item.get("soul", {})
+	for bargain_id in soul.get("bargainIdsAccepted", []):
+		var bargain := _ring_bargain_definition(item, str(bargain_id))
+		for effect in bargain.get("effects", []):
+			if str(effect.get("type", "")) == "damage_bonus" and str(effect.get("skillId", "")) == skill_id:
+				total += int(effect.get("amount", 0))
 	return total
 
 func revealed_basic_damage_bonus() -> int:
@@ -1054,6 +1070,7 @@ func _process_ring_soul_attunement(item: Dictionary, new_level: int) -> void:
 		if RingSouls.reveal_soul_motivation(item):
 			add_message("%s's hunger clarifies: %s" % [soul_definition.get("name", "The soul"), soul_definition.get("motivation", "")], "discovery")
 		_reveal_ring_memories_for_attunement(item, 2)
+		_offer_ring_bargains_for_attunement(item, new_level)
 	if new_level >= 3:
 		_reveal_ring_memories_for_attunement(item, 3)
 
@@ -1079,6 +1096,87 @@ func _ring_memory_definition(item: Dictionary, memory_id: String) -> Dictionary:
 	for memory in ring_soul_definition(item).get("memories", []):
 		if str(memory.get("id", "")) == memory_id:
 			return memory
+	return {}
+
+func _offer_ring_bargains_for_attunement(item: Dictionary, level: int) -> void:
+	if not RingSouls.has_soul(item):
+		return
+	for bargain in ring_soul_definition(item).get("bargains", []):
+		var bargain_id := str(bargain.get("id", ""))
+		var trigger: Dictionary = bargain.get("trigger", {})
+		if str(trigger.get("type", "")) != "attunement" or int(trigger.get("level", 0)) > level:
+			continue
+		if RingSouls.has_bargain_resolution(item, bargain_id):
+			continue
+		var soul: Dictionary = item.get("soul", {})
+		if soul.get("bargainIdsOffered", []).has(bargain_id):
+			continue
+		RingSouls.mark_bargain_offered(item, bargain_id)
+		ui["pendingBargain"] = { "itemInstanceId": str(item.get("instanceId", "")), "bargainId": bargain_id }
+		add_message("%s offers a bargain: %s" % [_ring_soul_speaker(item), bargain.get("offerLine", "")], "bargain")
+		_process_ring_whisper_for_item(item, "on_bargain_offered", { "bargainId": bargain_id })
+		return
+
+func accept_pending_bargain() -> void:
+	var pending: Dictionary = ui.get("pendingBargain", {})
+	if pending.is_empty():
+		add_message("No ring bargain is waiting.", "warning")
+		return
+	var item := inventory_item(str(pending.get("itemInstanceId", "")))
+	if item.is_empty():
+		ui.erase("pendingBargain")
+		add_message("The bargain slips away with the missing ring.", "warning")
+		state_changed.emit()
+		return
+	var bargain := _ring_bargain_definition(item, str(pending.get("bargainId", "")))
+	if bargain.is_empty():
+		ui.erase("pendingBargain")
+		add_message("The bargain has no shape.", "warning")
+		state_changed.emit()
+		return
+	var cost: Dictionary = bargain.get("healthCost", {})
+	var current_health := int(player.get("health", 0))
+	player["health"] = maxi(1, current_health - int(cost.get("amount", 0)))
+	RingSouls.adjust_trust(item, int(bargain.get("trustOnAccept", 0)))
+	RingSouls.mark_bargain_accepted(item, str(bargain.get("id", "")))
+	for memory_id in bargain.get("revealMemoryIds", []):
+		_reveal_ring_memory(item, str(memory_id))
+	add_message(str(bargain.get("acceptMessage", "The bargain is accepted.")), "bargain")
+	_process_ring_whisper_for_item(item, "on_bargain_accepted", { "bargainId": str(bargain.get("id", "")) })
+	_replace_inventory_item(item)
+	ui.erase("pendingBargain")
+	_clamp_resources()
+	state_changed.emit()
+
+func reject_pending_bargain() -> void:
+	var pending: Dictionary = ui.get("pendingBargain", {})
+	if pending.is_empty():
+		add_message("No ring bargain is waiting.", "warning")
+		return
+	var item := inventory_item(str(pending.get("itemInstanceId", "")))
+	if item.is_empty():
+		ui.erase("pendingBargain")
+		add_message("The bargain slips away with the missing ring.", "warning")
+		state_changed.emit()
+		return
+	var bargain := _ring_bargain_definition(item, str(pending.get("bargainId", "")))
+	if bargain.is_empty():
+		ui.erase("pendingBargain")
+		add_message("The bargain has no shape.", "warning")
+		state_changed.emit()
+		return
+	RingSouls.adjust_trust(item, int(bargain.get("trustOnReject", 0)))
+	RingSouls.mark_bargain_rejected(item, str(bargain.get("id", "")))
+	add_message(str(bargain.get("rejectMessage", "The bargain is rejected.")), "bargain")
+	_process_ring_whisper_for_item(item, "on_bargain_rejected", { "bargainId": str(bargain.get("id", "")) })
+	_replace_inventory_item(item)
+	ui.erase("pendingBargain")
+	state_changed.emit()
+
+func _ring_bargain_definition(item: Dictionary, bargain_id: String) -> Dictionary:
+	for bargain in ring_soul_definition(item).get("bargains", []):
+		if str(bargain.get("id", "")) == bargain_id:
+			return bargain
 	return {}
 
 func _process_ring_whisper_for_equipped(trigger: String, context: Dictionary = {}) -> bool:
