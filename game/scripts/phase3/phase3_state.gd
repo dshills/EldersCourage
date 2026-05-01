@@ -3,10 +3,12 @@ extends RefCounted
 signal state_changed
 
 const RingSouls := preload("res://scripts/phase8/ring_souls.gd")
+const ItemResonance := preload("res://scripts/phase9/item_resonance.gd")
 const MAX_MESSAGES := 10
 
 var items_by_id := {}
 var ring_souls_by_id := {}
+var item_resonances_by_id := {}
 var enemies_by_id := {}
 var loot_tables_by_id := {}
 var containers_by_id := {}
@@ -33,6 +35,7 @@ var temporary_modifiers: Array[Dictionary] = []
 var next_item_instance_number := 1
 var inventory_interaction := { "mode": "normal", "sourceItemInstanceId": "" }
 var turn_number := 0
+var resonance := {}
 
 func reset() -> void:
 	items_by_id = _load_records_by_id("res://data/phase3/items.json")
@@ -43,6 +46,7 @@ func reset() -> void:
 	for item_id in phase5_items.keys():
 		items_by_id[item_id] = phase5_items[item_id]
 	ring_souls_by_id = _load_records_by_id("res://data/phase8/ring_souls.json")
+	item_resonances_by_id = _load_records_by_id("res://data/phase9/item_resonances.json")
 	enemies_by_id = _load_records_by_id("res://data/phase3/enemies.json")
 	loot_tables_by_id = _load_records_by_id("res://data/phase3/loot_tables.json")
 	containers_by_id = _load_records_by_id("res://data/phase3/containers.json")
@@ -122,6 +126,7 @@ func _reset_world() -> void:
 	defeated = false
 	temporary_modifiers = []
 	inventory_interaction = { "mode": "normal", "sourceItemInstanceId": "" }
+	resonance = ItemResonance.create_state()
 	_mark_current_tile_visited()
 
 func move_player(direction: String) -> void:
@@ -567,6 +572,18 @@ func ring_soul_definition(item: Dictionary) -> Dictionary:
 
 func ring_soul_reveal_stage(item: Dictionary) -> int:
 	return RingSouls.reveal_stage(item)
+
+func active_resonances() -> Array[Dictionary]:
+	return ItemResonance.get_active_resonances(self)
+
+func discovered_active_resonances() -> Array[Dictionary]:
+	return ItemResonance.get_discovered_active_resonances(self)
+
+func hinted_resonances() -> Array[Dictionary]:
+	return ItemResonance.get_hinted_resonances(self)
+
+func is_resonance_discovered(resonance_id: String) -> bool:
+	return ItemResonance.is_discovered(self, resonance_id)
 
 func display_name(item: Dictionary) -> String:
 	var definition := item_definition(item)
