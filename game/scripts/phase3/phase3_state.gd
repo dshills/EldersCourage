@@ -138,14 +138,17 @@ func move_player(direction: String) -> void:
 		"west":
 			target["x"] = int(target["x"]) - 1
 		_:
+			_set_ui_animation("invalid", "messages")
 			add_message("You cannot travel that way.", "warning")
 			return
 	var tile := tile_at(target)
 	if tile.is_empty() or bool(tile.get("blocksMovement", false)):
+		_set_ui_animation("invalid", "messages")
 		add_message("You cannot travel that way.", "warning")
 		return
 	player["position"] = target
 	_mark_current_tile_visited()
+	_set_ui_animation("movement", "map")
 	add_message("You travel %s to %s." % [direction, tile.get("name", "the road")], "info")
 	if tile.has("encounterId") and not completed_encounters.has(str(tile["encounterId"])):
 		start_encounter(str(tile["encounterId"]))
@@ -237,6 +240,7 @@ func attack_enemy() -> void:
 		return
 	var damage := player_damage(active_enemy)
 	active_enemy["health"] = maxi(0, int(active_enemy.get("health", 0)) - damage)
+	_set_ui_animation("hit", "enemy")
 	add_message("You strike %s for %d damage." % [active_enemy.get("name", "the enemy"), damage], "combat")
 	_process_curses_for_equipped("attack")
 	_add_attunement_for_slot("weapon", 1)
@@ -441,8 +445,11 @@ func select_tile(tile_id: String) -> void:
 	state_changed.emit()
 
 func push_ui_animation(event_type: String, target_id: String = "") -> void:
-	ui["lastAnimation"] = { "id": "ui_%d" % Time.get_ticks_msec(), "type": event_type, "targetId": target_id, "createdAt": Time.get_ticks_msec() }
+	_set_ui_animation(event_type, target_id)
 	state_changed.emit()
+
+func _set_ui_animation(event_type: String, target_id: String = "") -> void:
+	ui["lastAnimation"] = { "id": "ui_%d" % Time.get_ticks_msec(), "type": event_type, "targetId": target_id, "createdAt": Time.get_ticks_msec() }
 
 func handle_escape() -> void:
 	if str(inventory_interaction.get("mode", "normal")) == "identify_target":
@@ -504,6 +511,7 @@ func complete_objective(objective_id: String) -> void:
 			stage["completed"] = true
 			changed_stage = str(stage.get("title", "Stage"))
 	if changed_stage != "":
+		_set_ui_animation("quest", "quest")
 		add_message("Quest stage complete: %s." % changed_stage, "success")
 	_check_zone_completion()
 
@@ -751,6 +759,8 @@ func active_stage_index() -> int:
 	return maxi(0, stages.size() - 1)
 
 func add_message(text: String, type: String) -> void:
+	if type == "warning":
+		_set_ui_animation("invalid", "messages")
 	messages.append({ "id": "message_%d" % Time.get_ticks_msec(), "text": text, "type": type })
 	while messages.size() > MAX_MESSAGES:
 		messages.pop_front()
@@ -787,6 +797,7 @@ func _award_xp(amount: int) -> void:
 		player["mana"] = effective_max_mana()
 		player["xpToNextLevel"] = 100 if int(player["level"]) == 2 else int(player["xpToNextLevel"]) + 50
 		var template := str(current_class().get("levelUpMessage", "You reached level {level}."))
+		_set_ui_animation("level", "header")
 		add_message(template.replace("{level}", str(int(player["level"]))), "success")
 		_process_level_gated_item_reveals()
 

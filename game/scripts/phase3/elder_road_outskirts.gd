@@ -53,6 +53,7 @@ var talent_toggle_button: Button
 var quest_toggle_button: Button
 var restart_button: Button
 var texture_cache := {}
+var last_animation_id := ""
 
 func _ready() -> void:
 	custom_minimum_size = Vector2(1120, 700)
@@ -441,6 +442,7 @@ func _refresh() -> void:
 	_refresh_talents()
 	_refresh_quest_panel()
 	_refresh_actions()
+	_play_last_animation()
 	class_panel.visible = not state.class_selected
 
 func _refresh_header() -> void:
@@ -951,6 +953,56 @@ func _configure_overlay(panel: PanelContainer, overlay_size: Vector2) -> void:
 	panel.offset_top = -overlay_size.y / 2.0
 	panel.offset_right = overlay_size.x / 2.0
 	panel.offset_bottom = overlay_size.y / 2.0
+
+func _play_last_animation() -> void:
+	var animation: Dictionary = state.ui.get("lastAnimation", {})
+	var animation_id := str(animation.get("id", ""))
+	if animation_id == "" or animation_id == last_animation_id:
+		return
+	last_animation_id = animation_id
+	var target := _animation_target(str(animation.get("type", "")), str(animation.get("targetId", "")))
+	if target == null:
+		return
+	var original := target.modulate
+	var flash := Color(1.0, 0.86, 0.45)
+	match str(animation.get("type", "")):
+		"hit":
+			flash = Color(1.0, 0.42, 0.30)
+		"invalid":
+			flash = Color(1.0, 0.34, 0.22)
+		"quest":
+			flash = Color(0.62, 0.86, 1.0)
+		"level":
+			flash = Color(0.7, 1.0, 0.52)
+	var tween := create_tween()
+	target.modulate = flash
+	tween.tween_property(target, "modulate", original, 0.28)
+
+func _animation_target(event_type: String, target_id: String) -> Control:
+	match event_type:
+		"movement":
+			return map_grid
+		"hit":
+			return enemy_panel
+		"quest":
+			return quest_box
+		"level":
+			return header_zone_label
+		"invalid":
+			return message_box
+		_:
+			match target_id:
+				"map":
+					return map_grid
+				"enemy":
+					return enemy_panel
+				"quest":
+					return quest_box
+				"header":
+					return header_zone_label
+				"messages":
+					return message_box
+	return null
 
 func _load_texture(path: String) -> Texture2D:
 	if texture_cache.has(path):
