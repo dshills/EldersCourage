@@ -141,7 +141,7 @@ func _build_header() -> Control:
 	frame.add_child(header)
 	var logo := TextureRect.new()
 	logo.texture = _load_texture(TITLE_PLAQUE_PATH)
-	logo.custom_minimum_size = Vector2(360, 118)
+	logo.custom_minimum_size = Vector2(360, 126)
 	logo.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	logo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	header.add_child(logo)
