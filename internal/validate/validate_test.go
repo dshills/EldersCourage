@@ -334,6 +334,58 @@ func TestDataAcceptsPhase9Resonances(t *testing.T) {
 	}
 }
 
+func TestDataAcceptsPhase9Merges(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "phase4/skills.json", `[
+		{"id":"ember_bolt","classId":"ember_sage","name":"Ember Bolt","description":"Burn.","icon":"res://bolt.png","targetType":"enemy","resource":"mana","resourceCost":10,"cooldownTurns":0,"effects":[{"type":"damage","amount":10}],"messageTemplate":"Burn {damage}."}
+	]`)
+	writeFile(t, root, "phase4/starter_items.json", `[
+		{"id":"phase4_ember_staff","name":"Ember Staff","type":"weapon","description":"Staff.","icon":"res://staff.png","quantity":1,"stackable":false,"equippable":true,"equipmentSlot":"weapon","stats":{"spellPower":2}}
+	]`)
+	writeFile(t, root, "phase5/items.json", `[
+		{"id":"phase5_ashen_ring","name":"Ashen Ring","type":"trinket","description":"Ring.","icon":"res://ring.png","quantity":1,"stackable":false,"equippable":true,"equipmentSlot":"trinket","stats":{},"defaultKnowledgeState":"unidentified","attunable":true,"maxAttunementLevel":3,"properties":[]},
+		{"id":"phase9_staff_of_the_ashen_orator","name":"Staff of the Ashen Orator","type":"weapon","description":"Staff.","icon":"res://staff2.png","quantity":1,"stackable":false,"equippable":true,"equipmentSlot":"weapon","stats":{"spellPower":4},"defaultKnowledgeState":"identified","attunable":true,"maxAttunementLevel":4,"soulId":"varn_ashen_orator","properties":[{"id":"phase9_staff_breath","name":"Breath","description":"Breath returns.","kind":"skill_modifier","visibility":"visible","revealed":true,"cursed":false,"requirements":[],"effects":[{"type":"restore_mana_bonus","skillId":"ember_bolt","amount":2}]}]}
+	]`)
+	writeFile(t, root, "phase8/ring_souls.json", `[
+		{"id":"varn_ashen_orator","name":"Varn","epithet":"The Ashen Orator","discipline":"Ember rhetoric","motivation":"Breath.","personalityTags":["eloquent"],"trustRange":{"min":-3,"max":3},
+		"whispers":[{"id":"varn_equip","trigger":"on_equip","line":"Warmth."}],
+		"memories":[{"id":"varn_hall","title":"Hall","reveal":{"type":"attunement","level":1},"text":"Ash."}],
+		"bargains":[{"id":"breath_for_flame","name":"Breath for Flame","trigger":{"type":"attunement","level":2},"offerLine":"Offer.","acceptMessage":"Accepted.","rejectMessage":"Rejected.","healthCost":{"amount":5,"nonlethal":true},"trustOnAccept":1,"trustOnReject":-1,"revealMemoryIds":["varn_hall"],"effects":[{"type":"damage_bonus","skillId":"ember_bolt","amount":2}]}]}
+	]`)
+	writeFile(t, root, "phase9/item_resonances.json", `[
+		{"id":"coal_remembers_flame","name":"Coal Remembers Flame","description":"Fire.","requiredItemIds":["phase5_ashen_ring","phase4_ember_staff"],"requiredEquippedSlots":["trinket","weapon"],"visibility":"hinted","discoveryRequirements":[{"type":"skill_use","skillId":"ember_bolt"}],"effects":[{"type":"skill_damage_bonus","skillId":"ember_bolt","amount":2}],"discoveryMessage":"Discovered.","cursed":false,"unstable":false}
+	]`)
+	writeFile(t, root, "phase9/item_merges.json", `[
+		{"id":"ashen_orator_staff","name":"Ashen Orator Staff","description":"Merge.","requiredItemIds":["phase5_ashen_ring","phase4_ember_staff"],"requiredConditions":[{"type":"resonance_discovered","resonanceId":"coal_remembers_flame"},{"type":"attunement_level","itemId":"phase5_ashen_ring","value":2},{"type":"soul_name_revealed","soulId":"varn_ashen_orator"}],"resultItemId":"phase9_staff_of_the_ashen_orator","consumesItems":true,"visibility":"hinted","risk":"The staff carries the price forward.","hint":"The ring wants a staff.","startMessage":"Starts.","completeMessage":"Complete."}
+	]`)
+
+	if _, err := Data(root); err != nil {
+		t.Fatalf("Data returned error: %v", err)
+	}
+}
+
+func TestDataRejectsPhase9MergeUnknownResonance(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "phase4/starter_items.json", `[
+		{"id":"phase4_ember_staff","name":"Ember Staff","type":"weapon","description":"Staff.","icon":"res://staff.png","quantity":1,"stackable":false,"equippable":true,"equipmentSlot":"weapon","stats":{"spellPower":2}}
+	]`)
+	writeFile(t, root, "phase5/items.json", `[
+		{"id":"phase5_ashen_ring","name":"Ashen Ring","type":"trinket","description":"Ring.","icon":"res://ring.png","quantity":1,"stackable":false,"equippable":true,"equipmentSlot":"trinket","stats":{},"defaultKnowledgeState":"unidentified","attunable":true,"maxAttunementLevel":3,"properties":[]},
+		{"id":"phase9_staff_of_the_ashen_orator","name":"Staff of the Ashen Orator","type":"weapon","description":"Staff.","icon":"res://staff2.png","quantity":1,"stackable":false,"equippable":true,"equipmentSlot":"weapon","stats":{"spellPower":4},"defaultKnowledgeState":"identified","attunable":true,"maxAttunementLevel":4,"properties":[]}
+	]`)
+	writeFile(t, root, "phase9/item_merges.json", `[
+		{"id":"ashen_orator_staff","name":"Ashen Orator Staff","description":"Merge.","requiredItemIds":["phase5_ashen_ring","phase4_ember_staff"],"requiredConditions":[{"type":"resonance_discovered","resonanceId":"missing_resonance"}],"resultItemId":"phase9_staff_of_the_ashen_orator","consumesItems":true,"visibility":"hinted","risk":"The staff carries the price forward.","hint":"The ring wants a staff.","startMessage":"Starts.","completeMessage":"Complete."}
+	]`)
+
+	_, err := Data(root)
+	if err == nil {
+		t.Fatal("Data returned nil error for unknown phase9 merge resonance")
+	}
+	if !strings.Contains(err.Error(), "unknown resonance") {
+		t.Fatalf("error = %q, want unknown resonance", err.Error())
+	}
+}
+
 func TestDataRejectsPhase9UnknownItemReference(t *testing.T) {
 	root := t.TempDir()
 	writeFile(t, root, "phase4/skills.json", `[
