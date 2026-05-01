@@ -134,14 +134,15 @@ func _build_screen() -> void:
 
 func _build_header() -> Control:
 	var frame := PanelContainer.new()
-	frame.custom_minimum_size = Vector2(0, 132)
+	frame.custom_minimum_size = Vector2(0, 150)
 	frame.add_theme_stylebox_override("panel", _stylebox(UITheme.color("panel_dark"), UITheme.color("border_gold"), 2, 8))
 	var header := HBoxContainer.new()
 	header.add_theme_constant_override("separation", 18)
 	frame.add_child(header)
 	var logo := TextureRect.new()
 	logo.texture = _load_texture(TITLE_PLAQUE_PATH)
-	logo.custom_minimum_size = Vector2(320, 108)
+	logo.custom_minimum_size = Vector2(360, 118)
+	logo.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	logo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	header.add_child(logo)
 	var stack := VBoxContainer.new()
