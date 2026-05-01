@@ -2,9 +2,11 @@ extends RefCounted
 
 signal state_changed
 
+const RingSouls := preload("res://scripts/phase8/ring_souls.gd")
 const MAX_MESSAGES := 10
 
 var items_by_id := {}
+var ring_souls_by_id := {}
 var enemies_by_id := {}
 var loot_tables_by_id := {}
 var containers_by_id := {}
@@ -39,6 +41,7 @@ func reset() -> void:
 	var phase5_items := _load_records_by_id("res://data/phase5/items.json")
 	for item_id in phase5_items.keys():
 		items_by_id[item_id] = phase5_items[item_id]
+	ring_souls_by_id = _load_records_by_id("res://data/phase8/ring_souls.json")
 	enemies_by_id = _load_records_by_id("res://data/phase3/enemies.json")
 	loot_tables_by_id = _load_records_by_id("res://data/phase3/loot_tables.json")
 	containers_by_id = _load_records_by_id("res://data/phase3/containers.json")
@@ -877,6 +880,9 @@ func _make_item_instance(item_id: String, quantity: int) -> Dictionary:
 	}
 	if bool(definition.get("attunable", false)):
 		item["attunement"] = { "points": 0, "level": 0, "revealedThresholds": [] }
+	var soul_id := str(definition.get("soulId", ""))
+	if soul_id != "":
+		item["soul"] = RingSouls.create_state(soul_id)
 	for property in definition.get("properties", []):
 		if str(property.get("visibility", "")) == "visible":
 			item["revealedPropertyIds"].append(str(property.get("id", "")))
