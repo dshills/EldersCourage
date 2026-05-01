@@ -1198,6 +1198,10 @@ func _message_color(type: String) -> Color:
 			return Color(0.55, 0.78, 0.90)
 		"bargain":
 			return Color(0.95, 0.66, 0.36)
+		"resonance":
+			return Color(0.58, 0.78, 0.72)
+		"merge":
+			return Color(0.95, 0.78, 0.42)
 		_:
 			return UITheme.color("text_dark")
 
@@ -1221,6 +1225,10 @@ func _message_label(type: String) -> String:
 			return "Memory"
 		"bargain":
 			return "Bargain"
+		"resonance":
+			return "Resonance"
+		"merge":
+			return "Merge"
 		_:
 			return "Info"
 

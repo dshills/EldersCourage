@@ -293,6 +293,7 @@ func use_skill(skill_id: String) -> void:
 		player["mana"] = int(player["mana"]) - cost
 	_process_curses_for_equipped("combat_use")
 	_process_ring_whisper_for_equipped("on_skill_use", { "skillId": skill_id })
+	process_resonance_trigger("skill_use", { "skillId": skill_id })
 	_add_attunement_for_slot("trinket", 1)
 	var damage_total := 0
 	var healing_total := 0
@@ -346,6 +347,7 @@ func equip_item(instance_id: String) -> void:
 	_reveal_ring_soul_presence(instance_id, "%s is not empty. Something inside it listens." % display_name(item))
 	_process_ring_whisper_for_instance(instance_id, "on_equip")
 	_process_curses_for_instance(instance_id, "equip")
+	process_resonance_trigger("equip_together", { "itemInstanceId": instance_id })
 	selected_item_id = ""
 	add_message("Equipped %s." % display_name(item), "loot")
 	state_changed.emit()
@@ -429,6 +431,8 @@ func identify_target_item(target_instance_id: String) -> void:
 	inventory_interaction = { "mode": "normal", "sourceItemInstanceId": "" }
 	selected_item_id = target_instance_id
 	add_message("The scroll burns to ash. %s reveals: %s." % [display_name(target), ", ".join(revealed)], "discovery")
+	process_resonance_trigger("identify_item", { "itemInstanceId": target_instance_id })
+	process_resonance_trigger("equip_together", { "itemInstanceId": target_instance_id })
 	_clamp_resources()
 	state_changed.emit()
 
@@ -564,6 +568,18 @@ func has_item(item_id: String) -> bool:
 			return true
 	return false
 
+func first_inventory_item_by_item_id(item_id: String) -> Dictionary:
+	for item in player.get("inventory", []):
+		if str(item.get("itemId", "")) == item_id:
+			return item
+	return {}
+
+func item_has_revealed_property(item_id: String, property_id: String) -> bool:
+	for item in player.get("inventory", []):
+		if str(item.get("itemId", "")) == item_id and _instance_has_revealed_property(item, property_id):
+			return true
+	return false
+
 func item_definition(item: Dictionary) -> Dictionary:
 	return items_by_id.get(str(item.get("itemId", item.get("id", ""))), {})
 
@@ -584,6 +600,12 @@ func hinted_resonances() -> Array[Dictionary]:
 
 func is_resonance_discovered(resonance_id: String) -> bool:
 	return ItemResonance.is_discovered(self, resonance_id)
+
+func process_resonance_trigger(trigger: String, context: Dictionary = {}) -> void:
+	var discovered := ItemResonance.process_trigger(self, trigger, context)
+	for resonance_def in discovered:
+		add_message(str(resonance_def.get("discoveryMessage", "Resonance discovered.")), "resonance")
+		_add_resonance_whisper(resonance_def)
 
 func display_name(item: Dictionary) -> String:
 	var definition := item_definition(item)
@@ -826,6 +848,7 @@ func _defeat_active_enemy() -> void:
 	completed_encounters[enemy_id] = true
 	add_message("%s is defeated." % active_enemy.get("name", "Enemy"), "combat")
 	_process_ring_whisper_for_equipped("on_enemy_defeated", { "enemyId": enemy_id })
+	process_resonance_trigger("enemy_defeated", { "enemyId": enemy_id })
 	_process_attunement_after_victory()
 	var xp := int(active_enemy.get("xpReward", 0))
 	if xp > 0:
@@ -1006,6 +1029,7 @@ func _process_curses_for_instance(instance_id: String, trigger: String) -> void:
 				add_message("%s wakes with the curse." % display_name(item), "discovery")
 			changed = true
 		_process_ring_whisper_for_instance(instance_id, "on_curse_trigger", { "curseId": property_id })
+		process_resonance_trigger("curse_trigger", { "itemInstanceId": instance_id, "curseId": property_id })
 		for effect in property.get("effects", []):
 			if str(effect.get("type", "")) == "health_cost":
 				health_cost += int(effect.get("amount", 0))
@@ -1065,6 +1089,7 @@ func _add_attunement_to_instance(instance_id: String, points: int) -> void:
 				add_message("New property revealed: %s." % property.get("name", "Unknown Property"), "discovery")
 		_process_ring_soul_attunement(item, new_level)
 		_process_ring_whisper_for_item(item, "on_attunement_level_up", { "attunementLevel": new_level })
+		process_resonance_trigger("attunement_level", { "itemInstanceId": instance_id, "attunementLevel": new_level })
 	_replace_inventory_item(item)
 	_clamp_resources()
 
@@ -1231,6 +1256,19 @@ func _ring_soul_speaker(item: Dictionary) -> String:
 	if bool(soul.get("nameRevealed", false)):
 		return str(soul_definition.get("name", "The ring"))
 	return "The ring"
+
+func _add_resonance_whisper(resonance_def: Dictionary) -> void:
+	var whisper := str(resonance_def.get("whisper", ""))
+	if whisper == "":
+		return
+	var speaker := "Varn" if _resonance_involves_item(resonance_def, "phase5_ashen_ring") else "The resonance"
+	add_message("%s whispers: \"%s\"" % [speaker, whisper], "ring_whisper")
+
+func _resonance_involves_item(resonance_def: Dictionary, item_id: String) -> bool:
+	for required_item_id in resonance_def.get("requiredItemIds", []):
+		if str(required_item_id) == item_id:
+			return true
+	return false
 
 func _attunement_level(points: int) -> int:
 	if points >= 9:
