@@ -1104,6 +1104,12 @@ func _message_color(type: String) -> Color:
 			return UITheme.color("magic")
 		"curse":
 			return UITheme.color("curse")
+		"ring_whisper":
+			return Color(0.72, 0.61, 0.95)
+		"memory":
+			return Color(0.55, 0.78, 0.90)
+		"bargain":
+			return Color(0.95, 0.66, 0.36)
 		_:
 			return UITheme.color("text_dark")
 
@@ -1121,6 +1127,12 @@ func _message_label(type: String) -> String:
 			return "Discovery"
 		"curse":
 			return "Curse"
+		"ring_whisper":
+			return "Whisper"
+		"memory":
+			return "Memory"
+		"bargain":
+			return "Bargain"
 		_:
 			return "Info"
 

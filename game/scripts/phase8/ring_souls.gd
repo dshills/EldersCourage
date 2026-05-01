@@ -125,6 +125,34 @@ static func has_bargain_resolution(item: Dictionary, bargain_id: String) -> bool
 	var soul: Dictionary = item.get("soul", {})
 	return soul.get("bargainIdsAccepted", []).has(bargain_id) or soul.get("bargainIdsRejected", []).has(bargain_id)
 
+static func select_whisper(item: Dictionary, soul_definition: Dictionary, trigger: String, context: Dictionary, current_turn: int) -> Dictionary:
+	if not has_soul(item) or soul_definition.is_empty():
+		return {}
+	var soul: Dictionary = item.get("soul", {})
+	var trust := int(soul.get("trust", 0))
+	var seen: Array = soul.get("whisperIdsSeen", [])
+	var last_turns: Dictionary = soul.get("lastWhisperTurnsById", {})
+	for whisper in soul_definition.get("whispers", []):
+		if str(whisper.get("trigger", "")) != trigger:
+			continue
+		var whisper_id := str(whisper.get("id", ""))
+		if bool(whisper.get("once", false)) and seen.has(whisper_id):
+			continue
+		if whisper.has("minTrust") and trust < int(whisper.get("minTrust", MIN_TRUST)):
+			continue
+		if whisper.has("maxTrust") and trust > int(whisper.get("maxTrust", MAX_TRUST)):
+			continue
+		var skill_ids: Array = whisper.get("skillIds", [])
+		if not skill_ids.is_empty() and not skill_ids.has(str(context.get("skillId", ""))):
+			continue
+		var cooldown := int(whisper.get("cooldownTurns", 0))
+		if cooldown > 0 and last_turns.has(whisper_id):
+			var elapsed := current_turn - int(last_turns.get(whisper_id, 0))
+			if elapsed < cooldown:
+				continue
+		return whisper
+	return {}
+
 static func _mark_soul_list(item: Dictionary, field: String, value: String) -> bool:
 	if not has_soul(item) or value == "":
 		return false

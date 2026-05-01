@@ -32,6 +32,7 @@ var selected_class_id := ""
 var temporary_modifiers: Array[Dictionary] = []
 var next_item_instance_number := 1
 var inventory_interaction := { "mode": "normal", "sourceItemInstanceId": "" }
+var turn_number := 0
 
 func reset() -> void:
 	items_by_id = _load_records_by_id("res://data/phase3/items.json")
@@ -112,6 +113,7 @@ func _reset_world() -> void:
 	selected_item_id = ""
 	selected_skill_id = ""
 	next_item_instance_number = 1
+	turn_number = 0
 	inventory_visible = false
 	talent_panel_visible = false
 	ui = { "activePanel": "", "debugMode": false, "selectedTileId": "", "lastAnimation": {} }
@@ -280,6 +282,7 @@ func use_skill(skill_id: String) -> void:
 	if str(skill.get("resource", "none")) == "mana":
 		player["mana"] = int(player["mana"]) - cost
 	_process_curses_for_equipped("combat_use")
+	_process_ring_whisper_for_equipped("on_skill_use", { "skillId": skill_id })
 	_add_attunement_for_slot("trinket", 1)
 	var damage_total := 0
 	var healing_total := 0
@@ -331,6 +334,7 @@ func equip_item(instance_id: String) -> void:
 	player["health"] = mini(int(player["health"]), effective_max_health())
 	player["mana"] = mini(int(player["mana"]), effective_max_mana())
 	_reveal_ring_soul_presence(instance_id, "%s is not empty. Something inside it listens." % display_name(item))
+	_process_ring_whisper_for_instance(instance_id, "on_equip")
 	_process_curses_for_instance(instance_id, "equip")
 	selected_item_id = ""
 	add_message("Equipped %s." % display_name(item), "loot")
@@ -783,6 +787,7 @@ func _defeat_active_enemy() -> void:
 	var enemy_id := str(active_enemy.get("id", ""))
 	completed_encounters[enemy_id] = true
 	add_message("%s is defeated." % active_enemy.get("name", "Enemy"), "combat")
+	_process_ring_whisper_for_equipped("on_enemy_defeated", { "enemyId": enemy_id })
 	_process_attunement_after_victory()
 	var xp := int(active_enemy.get("xpReward", 0))
 	if xp > 0:
@@ -962,6 +967,7 @@ func _process_curses_for_instance(instance_id: String, trigger: String) -> void:
 			if RingSouls.reveal_soul_presence(item):
 				add_message("%s wakes with the curse." % display_name(item), "discovery")
 			changed = true
+		_process_ring_whisper_for_instance(instance_id, "on_curse_trigger", { "curseId": property_id })
 		for effect in property.get("effects", []):
 			if str(effect.get("type", "")) == "health_cost":
 				health_cost += int(effect.get("amount", 0))
@@ -1009,6 +1015,7 @@ func _add_attunement_to_instance(instance_id: String, points: int) -> void:
 				_reveal_property(item, str(property.get("id", "")))
 				add_message("New property revealed: %s." % property.get("name", "Unknown Property"), "discovery")
 		_process_ring_soul_attunement(item, new_level)
+		_process_ring_whisper_for_item(item, "on_attunement_level_up", { "attunementLevel": new_level })
 	_replace_inventory_item(item)
 	_clamp_resources()
 
@@ -1063,6 +1070,37 @@ func _ring_memory_definition(item: Dictionary, memory_id: String) -> Dictionary:
 			return memory
 	return {}
 
+func _process_ring_whisper_for_equipped(trigger: String, context: Dictionary = {}) -> bool:
+	for item in equipped_items():
+		if _process_ring_whisper_for_instance(str(item.get("instanceId", "")), trigger, context):
+			return true
+	return false
+
+func _process_ring_whisper_for_instance(instance_id: String, trigger: String, context: Dictionary = {}) -> bool:
+	var item := inventory_item(instance_id)
+	if item.is_empty():
+		return false
+	return _process_ring_whisper_for_item(item, trigger, context)
+
+func _process_ring_whisper_for_item(item: Dictionary, trigger: String, context: Dictionary = {}) -> bool:
+	if not RingSouls.has_soul(item):
+		return false
+	var soul_definition := ring_soul_definition(item)
+	var whisper := RingSouls.select_whisper(item, soul_definition, trigger, context, turn_number)
+	if whisper.is_empty():
+		return false
+	RingSouls.mark_whisper_seen(item, str(whisper.get("id", "")), turn_number)
+	_replace_inventory_item(item)
+	add_message("%s whispers: \"%s\"" % [_ring_soul_speaker(item), whisper.get("line", "")], "ring_whisper")
+	return true
+
+func _ring_soul_speaker(item: Dictionary) -> String:
+	var soul_definition := ring_soul_definition(item)
+	var soul: Dictionary = item.get("soul", {})
+	if bool(soul.get("nameRevealed", false)):
+		return str(soul_definition.get("name", "The ring"))
+	return "The ring"
+
 func _attunement_level(points: int) -> int:
 	if points >= 9:
 		return 3
@@ -1099,6 +1137,7 @@ func _enemy_retaliates() -> void:
 		add_message("You are defeated. Restart to try again.", "warning")
 
 func _advance_turn() -> void:
+	turn_number += 1
 	var cooldowns: Dictionary = player.get("skills", {}).get("cooldowns", {})
 	for skill_id in cooldowns.keys():
 		cooldowns[skill_id] = maxi(0, int(cooldowns[skill_id]) - 1)
