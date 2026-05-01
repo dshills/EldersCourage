@@ -1,6 +1,8 @@
 extends Control
 
 const Phase3State := preload("res://scripts/phase3/phase3_state.gd")
+const UITheme := preload("res://scripts/ui/ui_theme.gd")
+const UI_THEME_PATH := "res://resources/themes/elders_courage_theme.tres"
 const TITLE_PLAQUE_PATH := "res://assets/ui/title_plaque.png"
 const ATTACK_BUTTON_PATH := "res://assets/ui/button_attack.png"
 const INVENTORY_BUTTON_PATH := "res://assets/ui/button_inventory.png"
@@ -47,6 +49,7 @@ var texture_cache := {}
 
 func _ready() -> void:
 	custom_minimum_size = Vector2(1120, 700)
+	theme = load(UI_THEME_PATH)
 	_ensure_inputs()
 	state = Phase3State.new()
 	state.state_changed.connect(_refresh)
@@ -84,26 +87,26 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _build_screen() -> void:
 	var background := ColorRect.new()
-	background.color = Color(0.055, 0.048, 0.042)
+	background.color = UITheme.color("deep_background")
 	background.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(background)
 
 	var margin := MarginContainer.new()
 	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
-	margin.add_theme_constant_override("margin_left", 16)
-	margin.add_theme_constant_override("margin_top", 12)
-	margin.add_theme_constant_override("margin_right", 16)
-	margin.add_theme_constant_override("margin_bottom", 12)
+	margin.add_theme_constant_override("margin_left", UITheme.OUTER_MARGIN)
+	margin.add_theme_constant_override("margin_top", UITheme.OUTER_MARGIN)
+	margin.add_theme_constant_override("margin_right", UITheme.OUTER_MARGIN)
+	margin.add_theme_constant_override("margin_bottom", UITheme.OUTER_MARGIN)
 	add_child(margin)
 
 	var root := VBoxContainer.new()
-	root.add_theme_constant_override("separation", 10)
+	root.add_theme_constant_override("separation", UITheme.SECTION_GAP)
 	margin.add_child(root)
 	root.add_child(_build_header())
 
 	var body := HBoxContainer.new()
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	body.add_theme_constant_override("separation", 12)
+	body.add_theme_constant_override("separation", UITheme.SECTION_GAP)
 	root.add_child(body)
 	body.add_child(_build_map_panel())
 	body.add_child(_build_side_panel())
@@ -124,7 +127,7 @@ func _build_screen() -> void:
 func _build_header() -> Control:
 	var frame := PanelContainer.new()
 	frame.custom_minimum_size = Vector2(0, 92)
-	frame.add_theme_stylebox_override("panel", _stylebox(Color(0.07, 0.055, 0.04), Color(0.70, 0.50, 0.22), 2, 8))
+	frame.add_theme_stylebox_override("panel", _stylebox(UITheme.color("panel_dark"), UITheme.color("border_gold"), 2, 8))
 	var header := HBoxContainer.new()
 	header.add_theme_constant_override("separation", 18)
 	frame.add_child(header)
@@ -138,7 +141,7 @@ func _build_header() -> Control:
 	stack.add_theme_constant_override("separation", 4)
 	header.add_child(stack)
 	header_zone_label = _gold_label("")
-	header_zone_label.add_theme_font_size_override("font_size", 24)
+	header_zone_label.add_theme_font_size_override("font_size", UITheme.FONT_HEADER)
 	stack.add_child(header_zone_label)
 	header_meta_label = _gold_label("")
 	header_meta_label.add_theme_font_size_override("font_size", 16)
@@ -157,9 +160,9 @@ func _build_map_panel() -> PanelContainer:
 	var panel := PanelContainer.new()
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	panel.add_theme_stylebox_override("panel", _stylebox(Color(0.08, 0.067, 0.052), Color(0.54, 0.39, 0.20), 3, 8))
+	panel.add_theme_stylebox_override("panel", _stylebox(UITheme.color("panel_dark"), UITheme.color("border_muted"), 2, 8))
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 8)
+	box.add_theme_constant_override("separation", UITheme.SECTION_GAP)
 	panel.add_child(box)
 	var title := _gold_label("Elder Road Outskirts")
 	title.add_theme_font_size_override("font_size", 24)
@@ -168,8 +171,8 @@ func _build_map_panel() -> PanelContainer:
 	map_grid.columns = 5
 	map_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	map_grid.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	map_grid.add_theme_constant_override("h_separation", 8)
-	map_grid.add_theme_constant_override("v_separation", 8)
+	map_grid.add_theme_constant_override("h_separation", UITheme.TILE_GAP)
+	map_grid.add_theme_constant_override("v_separation", UITheme.TILE_GAP)
 	box.add_child(map_grid)
 	location_details = RichTextLabel.new()
 	location_details.bbcode_enabled = true
@@ -183,9 +186,9 @@ func _build_side_panel() -> Control:
 	var panel := PanelContainer.new()
 	panel.custom_minimum_size = Vector2(390, 0)
 	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	panel.add_theme_stylebox_override("panel", _stylebox(Color(0.74, 0.58, 0.34), Color(0.40, 0.25, 0.12), 2, 8))
+	panel.add_theme_stylebox_override("panel", _stylebox(UITheme.color("panel_parchment"), Color(0.40, 0.25, 0.12), 2, 8))
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 8)
+	box.add_theme_constant_override("separation", UITheme.SECTION_GAP)
 	panel.add_child(box)
 	var character_box := _add_section(box, "Character Summary")
 	stats_label = _dark_label("")
@@ -229,7 +232,7 @@ func _build_action_bar() -> Control:
 	bar.add_theme_constant_override("v_separation", 8)
 	bar.add_child(_action_group("Move", _movement_pad()))
 	var location_group := HBoxContainer.new()
-	location_group.add_theme_constant_override("separation", 6)
+	location_group.add_theme_constant_override("separation", UITheme.BUTTON_GAP)
 	interact_button = _text_button("Open Container", "Open a container on this tile")
 	interact_button.pressed.connect(state.open_current_container)
 	location_group.add_child(interact_button)
@@ -238,16 +241,16 @@ func _build_action_bar() -> Control:
 	location_group.add_child(shrine_button)
 	bar.add_child(_action_group("Location", location_group))
 	var combat_group := HBoxContainer.new()
-	combat_group.add_theme_constant_override("separation", 6)
+	combat_group.add_theme_constant_override("separation", UITheme.BUTTON_GAP)
 	attack_button = _image_button(_load_texture(ATTACK_BUTTON_PATH), "Attack active enemy")
 	attack_button.pressed.connect(state.attack_enemy)
 	combat_group.add_child(attack_button)
 	bar.add_child(_action_group("Combat", combat_group))
 	skill_bar = HBoxContainer.new()
-	skill_bar.add_theme_constant_override("separation", 6)
+	skill_bar.add_theme_constant_override("separation", UITheme.BUTTON_GAP)
 	bar.add_child(_action_group("Skills", skill_bar))
 	var panel_group := HBoxContainer.new()
-	panel_group.add_theme_constant_override("separation", 6)
+	panel_group.add_theme_constant_override("separation", UITheme.BUTTON_GAP)
 	var inventory_button := _image_button(_load_texture(INVENTORY_BUTTON_PATH), "Toggle inventory")
 	inventory_button.pressed.connect(state.toggle_inventory)
 	panel_group.add_child(inventory_button)
@@ -282,7 +285,7 @@ func _build_inventory_panel() -> PanelContainer:
 	var panel := PanelContainer.new()
 	panel.position = Vector2(260, 120)
 	panel.size = Vector2(620, 430)
-	panel.add_theme_stylebox_override("panel", _stylebox(Color(0.055, 0.045, 0.035, 0.97), Color(0.68, 0.52, 0.24), 3, 8))
+	panel.add_theme_stylebox_override("panel", _stylebox(UITheme.color("panel_deep"), UITheme.color("border_gold"), 3, 8))
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 10)
 	panel.add_child(box)
@@ -322,7 +325,7 @@ func _build_talent_panel() -> PanelContainer:
 	var panel := PanelContainer.new()
 	panel.position = Vector2(890, 105)
 	panel.size = Vector2(360, 500)
-	panel.add_theme_stylebox_override("panel", _stylebox(Color(0.06, 0.05, 0.04, 0.98), Color(0.68, 0.52, 0.24), 3, 8))
+	panel.add_theme_stylebox_override("panel", _stylebox(UITheme.color("panel_deep"), UITheme.color("border_gold"), 3, 8))
 	talent_box = VBoxContainer.new()
 	talent_box.add_theme_constant_override("separation", 8)
 	panel.add_child(talent_box)
@@ -332,7 +335,7 @@ func _build_quest_panel() -> PanelContainer:
 	var panel := PanelContainer.new()
 	panel.position = Vector2(300, 110)
 	panel.size = Vector2(560, 500)
-	panel.add_theme_stylebox_override("panel", _stylebox(Color(0.055, 0.045, 0.035, 0.98), Color(0.68, 0.52, 0.24), 3, 8))
+	panel.add_theme_stylebox_override("panel", _stylebox(UITheme.color("panel_deep"), UITheme.color("border_gold"), 3, 8))
 	quest_panel_box = VBoxContainer.new()
 	quest_panel_box.add_theme_constant_override("separation", 8)
 	panel.add_child(quest_panel_box)
@@ -342,7 +345,7 @@ func _build_class_panel() -> PanelContainer:
 	var panel := PanelContainer.new()
 	panel.position = Vector2(160, 90)
 	panel.size = Vector2(960, 540)
-	panel.add_theme_stylebox_override("panel", _stylebox(Color(0.055, 0.045, 0.035, 0.98), Color(0.76, 0.58, 0.28), 4, 8))
+	panel.add_theme_stylebox_override("panel", _stylebox(UITheme.color("panel_deep"), Color(0.76, 0.58, 0.28), 4, 8))
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 14)
 	panel.add_child(box)
@@ -860,12 +863,13 @@ func _text_button(text: String, tooltip: String) -> Button:
 	button.tooltip_text = tooltip
 	button.focus_mode = Control.FOCUS_ALL
 	button.custom_minimum_size = Vector2(132, 42)
-	button.add_theme_stylebox_override("normal", _stylebox(Color(0.15, 0.10, 0.06), Color(0.66, 0.48, 0.22), 2, 5))
+	button.add_theme_stylebox_override("normal", _stylebox(Color(0.15, 0.10, 0.06), UITheme.color("border_gold"), 2, 5))
 	button.add_theme_stylebox_override("hover", _stylebox(Color(0.20, 0.13, 0.07), Color(0.90, 0.66, 0.28), 2, 5))
 	button.add_theme_stylebox_override("focus", _stylebox(Color(0.18, 0.12, 0.07), Color(1.0, 0.82, 0.34), 3, 5))
-	button.add_theme_stylebox_override("disabled", _stylebox(Color(0.09, 0.075, 0.06), Color(0.34, 0.28, 0.20), 2, 5))
-	button.add_theme_color_override("font_color", Color(0.95, 0.83, 0.54))
-	button.add_theme_color_override("font_disabled_color", Color(0.58, 0.50, 0.36))
+	button.add_theme_stylebox_override("disabled", _stylebox(UITheme.color("disabled_fill"), UITheme.color("disabled_border"), 2, 5))
+	button.add_theme_color_override("font_color", UITheme.color("text_primary"))
+	button.add_theme_color_override("font_disabled_color", UITheme.color("disabled_text"))
+	button.add_theme_font_size_override("font_size", UITheme.FONT_BUTTON)
 	return button
 
 func _image_button(texture: Texture2D, tooltip: String) -> TextureButton:
@@ -881,13 +885,13 @@ func _image_button(texture: Texture2D, tooltip: String) -> TextureButton:
 
 func _add_section(parent: Control, title: String) -> VBoxContainer:
 	var panel := PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", _stylebox(Color(0.83, 0.67, 0.40), Color(0.43, 0.28, 0.12), 2, 6))
+	panel.add_theme_stylebox_override("panel", _stylebox(UITheme.color("section_parchment"), Color(0.43, 0.28, 0.12), 1, 6))
 	parent.add_child(panel)
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 5)
+	box.add_theme_constant_override("separation", UITheme.SECTION_GAP)
 	panel.add_child(box)
 	var label := _dark_label(title)
-	label.add_theme_font_size_override("font_size", 17)
+	label.add_theme_font_size_override("font_size", UITheme.FONT_SECTION)
 	box.add_child(label)
 	return box
 
@@ -899,7 +903,7 @@ func _stat_bar() -> ProgressBar:
 
 func _action_group(title: String, content: Control) -> PanelContainer:
 	var panel := PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", _stylebox(Color(0.08, 0.06, 0.045), Color(0.46, 0.34, 0.16), 2, 6))
+	panel.add_theme_stylebox_override("panel", _stylebox(UITheme.color("panel_dark"), UITheme.color("border_muted"), 1, 6))
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 4)
 	panel.add_child(box)
@@ -930,29 +934,20 @@ func _dark_label(text: String) -> Label:
 	var label := Label.new()
 	label.text = text
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	label.add_theme_font_size_override("font_size", 15)
-	label.add_theme_color_override("font_color", Color(0.22, 0.14, 0.07))
+	label.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
+	label.add_theme_color_override("font_color", UITheme.color("text_dark"))
 	return label
 
 func _gold_label(text: String) -> Label:
 	var label := Label.new()
 	label.text = text
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	label.add_theme_color_override("font_color", Color(0.96, 0.80, 0.42))
+	label.add_theme_color_override("font_color", UITheme.color("text_heading"))
 	label.add_theme_font_size_override("font_size", 18)
 	return label
 
 func _stylebox(fill: Color, border: Color, border_width: int, radius: int) -> StyleBoxFlat:
-	var box := StyleBoxFlat.new()
-	box.bg_color = fill
-	box.border_color = border
-	box.set_border_width_all(border_width)
-	box.set_corner_radius_all(radius)
-	box.content_margin_left = 8
-	box.content_margin_top = 7
-	box.content_margin_right = 8
-	box.content_margin_bottom = 7
-	return box
+	return UITheme.stylebox(fill, border, border_width, radius)
 
 func _equipped_name(instance_id: String) -> String:
 	if instance_id == "":
@@ -1000,19 +995,19 @@ func _skill_names(skill_ids: Array) -> Array[String]:
 func _message_color(type: String) -> Color:
 	match type:
 		"success":
-			return Color(0.12, 0.38, 0.14)
+			return UITheme.color("success")
 		"warning":
-			return Color(0.58, 0.18, 0.08)
+			return Color(0.75, 0.42, 0.12)
 		"combat":
-			return Color(0.44, 0.08, 0.05)
+			return UITheme.color("danger")
 		"loot":
-			return Color(0.34, 0.22, 0.02)
+			return UITheme.color("text_heading")
 		"discovery":
-			return Color(0.18, 0.22, 0.50)
+			return UITheme.color("magic")
 		"curse":
-			return Color(0.50, 0.04, 0.16)
+			return UITheme.color("curse")
 		_:
-			return Color(0.20, 0.13, 0.07)
+			return UITheme.color("text_dark")
 
 func _message_label(type: String) -> String:
 	match type:
