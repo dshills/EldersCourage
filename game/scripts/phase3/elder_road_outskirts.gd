@@ -15,8 +15,16 @@ const FIRE_RUNE_PATH := "res://assets/items/fire_rune.png"
 var state
 var map_grid: GridContainer
 var header_label: Label
+var header_zone_label: Label
+var header_meta_label: Label
+var header_debug_label: Label
+var header_xp_bar: ProgressBar
 var stats_label: Label
+var health_bar: ProgressBar
+var mana_bar: ProgressBar
+var side_xp_bar: ProgressBar
 var equipment_label: RichTextLabel
+var location_details: RichTextLabel
 var quest_box: VBoxContainer
 var message_box: VBoxContainer
 var enemy_panel: PanelContainer
@@ -105,20 +113,36 @@ func _build_screen() -> void:
 	add_child(class_panel)
 
 func _build_header() -> Control:
+	var frame := PanelContainer.new()
+	frame.custom_minimum_size = Vector2(0, 92)
+	frame.add_theme_stylebox_override("panel", _stylebox(Color(0.07, 0.055, 0.04), Color(0.70, 0.50, 0.22), 2, 8))
 	var header := HBoxContainer.new()
-	header.custom_minimum_size = Vector2(0, 80)
-	header.add_theme_constant_override("separation", 14)
+	header.add_theme_constant_override("separation", 18)
+	frame.add_child(header)
 	var logo := TextureRect.new()
 	logo.texture = _load_texture(TITLE_PLAQUE_PATH)
 	logo.custom_minimum_size = Vector2(260, 72)
 	logo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	header.add_child(logo)
-	header_label = Label.new()
-	header_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	header_label.add_theme_font_size_override("font_size", 24)
-	header_label.add_theme_color_override("font_color", Color(0.94, 0.80, 0.42))
-	header.add_child(header_label)
-	return header
+	var stack := VBoxContainer.new()
+	stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	stack.add_theme_constant_override("separation", 4)
+	header.add_child(stack)
+	header_zone_label = _gold_label("")
+	header_zone_label.add_theme_font_size_override("font_size", 24)
+	stack.add_child(header_zone_label)
+	header_meta_label = _gold_label("")
+	header_meta_label.add_theme_font_size_override("font_size", 16)
+	stack.add_child(header_meta_label)
+	header_xp_bar = ProgressBar.new()
+	header_xp_bar.custom_minimum_size = Vector2(360, 12)
+	header_xp_bar.show_percentage = false
+	stack.add_child(header_xp_bar)
+	header_debug_label = _gold_label("")
+	header_debug_label.add_theme_font_size_override("font_size", 12)
+	stack.add_child(header_debug_label)
+	header_label = header_zone_label
+	return frame
 
 func _build_map_panel() -> PanelContainer:
 	var panel := PanelContainer.new()
@@ -138,29 +162,41 @@ func _build_map_panel() -> PanelContainer:
 	map_grid.add_theme_constant_override("h_separation", 8)
 	map_grid.add_theme_constant_override("v_separation", 8)
 	box.add_child(map_grid)
+	location_details = RichTextLabel.new()
+	location_details.bbcode_enabled = true
+	location_details.fit_content = true
+	location_details.custom_minimum_size = Vector2(0, 98)
+	location_details.add_theme_font_size_override("normal_font_size", 14)
+	box.add_child(location_details)
 	return panel
 
 func _build_side_panel() -> Control:
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(380, 0)
+	panel.custom_minimum_size = Vector2(390, 0)
 	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	panel.add_theme_stylebox_override("panel", _stylebox(Color(0.74, 0.58, 0.34), Color(0.40, 0.25, 0.12), 2, 8))
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 9)
+	box.add_theme_constant_override("separation", 8)
 	panel.add_child(box)
+	var character_box := _add_section(box, "Character Summary")
 	stats_label = _dark_label("")
-	box.add_child(stats_label)
+	character_box.add_child(stats_label)
+	health_bar = _stat_bar()
+	character_box.add_child(health_bar)
+	mana_bar = _stat_bar()
+	character_box.add_child(mana_bar)
+	side_xp_bar = _stat_bar()
+	character_box.add_child(side_xp_bar)
+	var equipment_box := _add_section(box, "Equipment")
 	equipment_label = RichTextLabel.new()
 	equipment_label.bbcode_enabled = true
 	equipment_label.fit_content = true
-	equipment_label.custom_minimum_size = Vector2(340, 95)
-	box.add_child(equipment_label)
-	var quest_title := _dark_label("The Elder Road")
-	quest_title.add_theme_font_size_override("font_size", 20)
-	box.add_child(quest_title)
+	equipment_label.custom_minimum_size = Vector2(340, 70)
+	equipment_box.add_child(equipment_label)
+	var quest_section := _add_section(box, "The Elder Road")
 	quest_box = VBoxContainer.new()
 	quest_box.add_theme_constant_override("separation", 2)
-	box.add_child(quest_box)
+	quest_section.add_child(quest_box)
 	enemy_panel = PanelContainer.new()
 	enemy_panel.add_theme_stylebox_override("panel", _stylebox(Color(0.12, 0.08, 0.07), Color(0.58, 0.20, 0.12), 2, 6))
 	var enemy_box := VBoxContainer.new()
@@ -171,43 +207,51 @@ func _build_side_panel() -> Control:
 	enemy_health.show_percentage = false
 	enemy_box.add_child(enemy_health)
 	box.add_child(enemy_panel)
-	var log_title := _dark_label("Messages")
-	log_title.add_theme_font_size_override("font_size", 18)
-	box.add_child(log_title)
+	var log_section := _add_section(box, "Messages")
 	message_box = VBoxContainer.new()
-	message_box.add_theme_constant_override("separation", 2)
-	box.add_child(message_box)
+	message_box.add_theme_constant_override("separation", 4)
+	log_section.add_child(message_box)
 	return panel
 
 func _build_action_bar() -> Control:
-	var bar := HBoxContainer.new()
-	bar.custom_minimum_size = Vector2(0, 92)
-	bar.add_theme_constant_override("separation", 10)
-	bar.add_child(_movement_pad())
+	var bar := HFlowContainer.new()
+	bar.custom_minimum_size = Vector2(0, 104)
+	bar.add_theme_constant_override("h_separation", 10)
+	bar.add_theme_constant_override("v_separation", 8)
+	bar.add_child(_action_group("Move", _movement_pad()))
+	var location_group := HBoxContainer.new()
+	location_group.add_theme_constant_override("separation", 6)
 	interact_button = _text_button("Open Container", "Open a container on this tile")
 	interact_button.pressed.connect(state.open_current_container)
-	bar.add_child(interact_button)
+	location_group.add_child(interact_button)
 	shrine_button = _text_button("Activate Shrine", "Activate a shrine on this tile")
 	shrine_button.pressed.connect(state.activate_current_shrine)
-	bar.add_child(shrine_button)
+	location_group.add_child(shrine_button)
+	bar.add_child(_action_group("Location", location_group))
+	var combat_group := HBoxContainer.new()
+	combat_group.add_theme_constant_override("separation", 6)
 	attack_button = _image_button(_load_texture(ATTACK_BUTTON_PATH), "Attack active enemy")
 	attack_button.pressed.connect(state.attack_enemy)
-	bar.add_child(attack_button)
+	combat_group.add_child(attack_button)
+	bar.add_child(_action_group("Combat", combat_group))
 	skill_bar = HBoxContainer.new()
 	skill_bar.add_theme_constant_override("separation", 6)
-	bar.add_child(skill_bar)
+	bar.add_child(_action_group("Skills", skill_bar))
+	var panel_group := HBoxContainer.new()
+	panel_group.add_theme_constant_override("separation", 6)
 	var inventory_button := _image_button(_load_texture(INVENTORY_BUTTON_PATH), "Toggle inventory")
 	inventory_button.pressed.connect(state.toggle_inventory)
-	bar.add_child(inventory_button)
+	panel_group.add_child(inventory_button)
 	var talent_button := _text_button("Talents", "Toggle talent panel")
 	talent_button.pressed.connect(state.toggle_talent_panel)
-	bar.add_child(talent_button)
+	panel_group.add_child(talent_button)
 	var quest_button := _image_button(_load_texture(QUEST_BUTTON_PATH), "Quest tracker")
 	quest_button.pressed.connect(func() -> void: state.toggle_panel("quests"))
-	bar.add_child(quest_button)
+	panel_group.add_child(quest_button)
 	restart_button = _text_button("Restart", "Restart Phase 3")
 	restart_button.pressed.connect(state.restart_game)
-	bar.add_child(restart_button)
+	panel_group.add_child(restart_button)
+	bar.add_child(_action_group("Panels", panel_group))
 	return bar
 
 func _movement_pad() -> GridContainer:
@@ -334,6 +378,7 @@ func _refresh() -> void:
 		return
 	_refresh_header()
 	_refresh_map()
+	_refresh_location_details()
 	_refresh_stats()
 	_refresh_quest()
 	_refresh_enemy()
@@ -347,18 +392,80 @@ func _refresh() -> void:
 func _refresh_header() -> void:
 	var position: Dictionary = state.player.get("position", {})
 	var tile: Dictionary = state.current_tile()
-	header_label.text = "%s | %s | Level %d | XP %d/%d | Talent Pts %d | Gold %d | Position %d,%d | %s" % [
-		state.zone.get("name", "Elder Road"),
+	header_zone_label.text = str(state.zone.get("name", "Elder Road Outskirts"))
+	header_meta_label.text = "%s  Lv. %d    XP %d/%d    Talent Pts %d    Gold %d" % [
 		state.current_class().get("name", "Choose Class"),
 		int(state.player.get("level", 1)),
 		int(state.player.get("xp", 0)),
 		int(state.player.get("xpToNextLevel", 50)),
 		int(state.player.get("talents", {}).get("availablePoints", 0)),
 		int(state.player.get("gold", 0)),
+	]
+	header_xp_bar.max_value = float(maxi(1, int(state.player.get("xpToNextLevel", 50))))
+	header_xp_bar.value = float(state.player.get("xp", 0))
+	header_debug_label.visible = bool(state.ui.get("debugMode", false))
+	header_debug_label.text = "Position %d,%d | Tile %s | Encounter %s" % [
 		int(position.get("x", 0)),
 		int(position.get("y", 0)),
-		tile.get("name", "Unknown"),
+		tile.get("id", "unknown"),
+		tile.get("encounterId", "none"),
 	]
+
+func _refresh_location_details() -> void:
+	var tile: Dictionary = state.current_tile()
+	var actions := _current_location_actions(tile)
+	location_details.text = "[b][color=#f0d680]%s[/color][/b]\n%s\n\nExits: %s\nAvailable: %s" % [
+		tile.get("name", "Unknown Road"),
+		_location_description(tile),
+		", ".join(_current_exits()),
+		", ".join(actions) if not actions.is_empty() else "None",
+	]
+
+func _current_exits() -> Array[String]:
+	var exits: Array[String] = []
+	var position: Dictionary = state.player.get("position", {})
+	for direction in ["north", "south", "east", "west"]:
+		var target := position.duplicate()
+		match direction:
+			"north":
+				target["y"] = int(target["y"]) - 1
+			"south":
+				target["y"] = int(target["y"]) + 1
+			"east":
+				target["x"] = int(target["x"]) + 1
+			"west":
+				target["x"] = int(target["x"]) - 1
+		var tile: Dictionary = state.tile_at(target)
+		if not tile.is_empty() and not bool(tile.get("blocksMovement", false)):
+			exits.append(direction.capitalize())
+	return exits
+
+func _current_location_actions(tile: Dictionary) -> Array[String]:
+	var actions: Array[String] = []
+	if tile.has("containerId"):
+		var container: Dictionary = state.containers_by_id.get(str(tile["containerId"]), {})
+		actions.append("Container opened" if bool(container.get("opened", false)) else "Open Container")
+	if tile.has("shrineId"):
+		var shrine: Dictionary = state.shrines_by_id.get(str(tile["shrineId"]), {})
+		actions.append("Shrine spent" if bool(shrine.get("activated", false)) else "Activate Shrine")
+	if tile.has("encounterId") and not state.completed_encounters.has(str(tile["encounterId"])):
+		actions.append("Enemy nearby")
+	if str(tile.get("kind", "")) == "elder_stone":
+		actions.append("Quest objective")
+	return actions
+
+func _location_description(tile: Dictionary) -> String:
+	if tile.has("containerId"):
+		var container: Dictionary = state.containers_by_id.get(str(tile["containerId"]), {})
+		if bool(container.get("opened", false)):
+			return "The cache hangs open. Whatever courage it held is now yours."
+	if tile.has("shrineId"):
+		var shrine: Dictionary = state.shrines_by_id.get(str(tile["shrineId"]), {})
+		if bool(shrine.get("activated", false)):
+			return "The shrine is quiet now, its old light spent."
+	if tile.has("encounterId") and state.completed_encounters.has(str(tile["encounterId"])):
+		return "The road is still scarred by combat, but the threat has ended."
+	return str(tile.get("description", "The Elder Road waits in ash and old stone."))
 
 func _refresh_map() -> void:
 	for child in map_grid.get_children():
@@ -373,13 +480,13 @@ func _refresh_map() -> void:
 	)
 	for tile in tiles:
 		var button := Button.new()
-		button.custom_minimum_size = Vector2(120, 84)
+		button.custom_minimum_size = Vector2(146, 104)
 		button.focus_mode = Control.FOCUS_ALL
 		var texture := _tile_texture(str(tile.get("kind", "road")))
 		button.icon = texture
 		button.expand_icon = true
 		button.text = _tile_text(tile)
-		button.tooltip_text = str(tile.get("description", ""))
+		button.tooltip_text = "%s\n%s" % [tile.get("name", "Tile"), _location_description(tile)]
 		button.add_theme_stylebox_override("normal", _tile_style(tile))
 		button.add_theme_stylebox_override("hover", _stylebox(Color(0.18, 0.14, 0.09), Color(0.95, 0.73, 0.34), 2, 5))
 		button.pressed.connect(func(tile_position := _tile_position(tile)) -> void: _move_to_adjacent(tile_position))
@@ -387,17 +494,27 @@ func _refresh_map() -> void:
 
 func _refresh_stats() -> void:
 	var stats: Dictionary = state.effective_stats()
-	stats_label.text = "Health: %d/%d  Mana: %d/%d\nStrength: %d  Defense: %d  Spell: %d" % [
+	stats_label.text = "%s - Level %d\nHealth %d/%d   Mana %d/%d\nXP %d/%d\nSTR %d   DEF %d   SPELL %d" % [
+		state.current_class().get("name", "Choose Class"),
+		int(state.player.get("level", 1)),
 		int(state.player.get("health", 0)),
 		state.effective_max_health(),
 		int(state.player.get("mana", 0)),
 		state.effective_max_mana(),
+		int(state.player.get("xp", 0)),
+		int(state.player.get("xpToNextLevel", 50)),
 		int(stats.get("strength", 0)),
 		int(stats.get("defense", 0)),
 		int(stats.get("spellPower", 0)),
 	]
+	health_bar.max_value = float(maxi(1, state.effective_max_health()))
+	health_bar.value = float(state.player.get("health", 0))
+	mana_bar.max_value = float(maxi(1, state.effective_max_mana()))
+	mana_bar.value = float(state.player.get("mana", 0))
+	side_xp_bar.max_value = float(maxi(1, int(state.player.get("xpToNextLevel", 50))))
+	side_xp_bar.value = float(state.player.get("xp", 0))
 	var equipment: Dictionary = state.player.get("equipment", {})
-	equipment_label.text = "[b]Equipment[/b]\nWeapon: %s\nArmor: %s\nTrinket: %s" % [
+	equipment_label.text = "Weapon   %s\nArmor    %s\nTrinket  %s" % [
 		_equipped_name(str(equipment.get("weapon", ""))),
 		_equipped_name(str(equipment.get("armor", ""))),
 		_equipped_name(str(equipment.get("trinket", ""))),
@@ -412,9 +529,14 @@ func _refresh_skills() -> void:
 			continue
 		var cooldown: int = int(state.player.get("skills", {}).get("cooldowns", {}).get(str(skill_id), 0))
 		var cost: int = state.effective_skill_cost(skill)
-		var button := _text_button("%s\n%dM%s" % [skill.get("name", skill_id), cost, " CD:%d" % cooldown if cooldown > 0 else ""], str(skill.get("description", "")))
-		button.custom_minimum_size = Vector2(130, 54)
-		button.disabled = cooldown > 0 or (str(skill.get("resource", "")) == "mana" and int(state.player.get("mana", 0)) < cost)
+		var disabled_reason := _skill_disabled_reason(skill, cooldown, cost)
+		var secondary := "CD %d" % cooldown if cooldown > 0 else ("%d Mana" % cost if str(skill.get("resource", "")) == "mana" and cost > 0 else "Ready")
+		if disabled_reason != "":
+			secondary = disabled_reason
+		var button := _text_button("%s\n%s" % [skill.get("name", skill_id), secondary], _skill_tooltip(skill, cooldown, cost, disabled_reason))
+		button.custom_minimum_size = Vector2(136, 58)
+		button.disabled = disabled_reason != ""
+		_apply_skill_button_style(button)
 		button.pressed.connect(func(id := str(skill_id)) -> void: state.use_skill(id))
 		skill_bar.add_child(button)
 
@@ -472,12 +594,16 @@ func _refresh_enemy() -> void:
 func _refresh_messages() -> void:
 	for child in message_box.get_children():
 		child.queue_free()
-	for message in state.messages:
+	var visible_messages: Array = state.messages.duplicate()
+	visible_messages.reverse()
+	visible_messages = visible_messages.slice(0, mini(8, visible_messages.size()))
+	for message in visible_messages:
 		var line := Label.new()
-		line.text = str(message.get("text", ""))
+		var type := str(message.get("type", "info"))
+		line.text = "[%s] %s" % [_message_label(type), str(message.get("text", ""))]
 		line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		line.add_theme_font_size_override("font_size", 13)
-		line.add_theme_color_override("font_color", _message_color(str(message.get("type", "info"))))
+		line.add_theme_color_override("font_color", _message_color(type))
 		message_box.add_child(line)
 
 func _refresh_inventory() -> void:
@@ -524,9 +650,15 @@ func _refresh_inventory() -> void:
 
 func _refresh_actions() -> void:
 	var tile: Dictionary = state.current_tile()
-	interact_button.disabled = not state.class_selected or not tile.has("containerId")
-	shrine_button.disabled = not state.class_selected or not tile.has("shrineId")
-	attack_button.disabled = state.defeated or not state.class_selected
+	var container_available: bool = state.class_selected and tile.has("containerId") and not bool(state.containers_by_id.get(str(tile.get("containerId", "")), {}).get("opened", false))
+	var shrine_available: bool = state.class_selected and tile.has("shrineId") and not bool(state.shrines_by_id.get(str(tile.get("shrineId", "")), {}).get("activated", false))
+	interact_button.disabled = not container_available
+	interact_button.tooltip_text = "Open the container here." if container_available else "No unopened container here."
+	shrine_button.disabled = not shrine_available
+	shrine_button.tooltip_text = "Activate the shrine here." if shrine_available else "No unused shrine here."
+	var enemy_available: bool = state.class_selected and not state.defeated and (not state.active_enemy.is_empty() or tile.has("encounterId"))
+	attack_button.disabled = not enemy_available
+	attack_button.tooltip_text = "Attack active enemy." if enemy_available else "No active enemy target."
 	restart_button.visible = state.defeated or bool(state.zone.get("completed", false))
 
 func _interact() -> void:
@@ -558,17 +690,22 @@ func _move_to_adjacent(target: Vector2i) -> void:
 func _tile_text(tile: Dictionary) -> String:
 	var position := _tile_position(tile)
 	var player_position: Dictionary = state.player.get("position", {})
-	var marker := "You\n" if position.x == int(player_position.get("x", 0)) and position.y == int(player_position.get("y", 0)) else ""
-	var suffix := ""
+	var marker := "YOU\n" if position.x == int(player_position.get("x", 0)) and position.y == int(player_position.get("y", 0)) else ""
+	var suffix := _tile_marker(tile)
+	return "%s%s\n%s" % [marker, suffix, tile.get("name", "Tile")]
+
+func _tile_marker(tile: Dictionary) -> String:
 	if tile.has("encounterId") and not state.completed_encounters.has(str(tile["encounterId"])):
-		suffix = "\nEnemy"
-	elif tile.has("containerId"):
+		return "Enemy"
+	if tile.has("containerId"):
 		var container: Dictionary = state.containers_by_id.get(str(tile["containerId"]), {})
-		suffix = "\nOpened" if bool(container.get("opened", false)) else "\nChest"
-	elif tile.has("shrineId"):
+		return "Opened Cache" if bool(container.get("opened", false)) else "Cache"
+	if tile.has("shrineId"):
 		var shrine: Dictionary = state.shrines_by_id.get(str(tile["shrineId"]), {})
-		suffix = "\nSpent" if bool(shrine.get("activated", false)) else "\nShrine"
-	return "%s%s%s" % [marker, tile.get("name", "Tile"), suffix]
+		return "Spent Shrine" if bool(shrine.get("activated", false)) else "Shrine"
+	if str(tile.get("kind", "")) == "elder_stone":
+		return "Objective"
+	return "Road"
 
 func _tile_position(tile: Dictionary) -> Vector2i:
 	var raw: Array = tile.get("position", [0, 0])
@@ -597,7 +734,21 @@ func _tile_style(tile: Dictionary) -> StyleBoxFlat:
 	var position := _tile_position(tile)
 	var player_position: Dictionary = state.player.get("position", {})
 	if position.x == int(player_position.get("x", 0)) and position.y == int(player_position.get("y", 0)):
-		return _stylebox(Color(0.18, 0.14, 0.07), Color(0.95, 0.73, 0.30), 3, 5)
+		return _stylebox(Color(0.20, 0.15, 0.06), Color(1.0, 0.77, 0.22), 4, 6)
+	if tile.has("encounterId") and not state.completed_encounters.has(str(tile["encounterId"])):
+		return _stylebox(Color(0.14, 0.07, 0.06), Color(0.72, 0.20, 0.12), 3, 5)
+	if tile.has("containerId"):
+		var container: Dictionary = state.containers_by_id.get(str(tile["containerId"]), {})
+		if bool(container.get("opened", false)):
+			return _stylebox(Color(0.10, 0.09, 0.075), Color(0.35, 0.30, 0.22), 2, 5)
+		return _stylebox(Color(0.13, 0.10, 0.06), Color(0.76, 0.54, 0.22), 3, 5)
+	if tile.has("shrineId"):
+		var shrine: Dictionary = state.shrines_by_id.get(str(tile["shrineId"]), {})
+		if bool(shrine.get("activated", false)):
+			return _stylebox(Color(0.08, 0.085, 0.08), Color(0.28, 0.34, 0.30), 2, 5)
+		return _stylebox(Color(0.08, 0.10, 0.09), Color(0.30, 0.62, 0.48), 3, 5)
+	if str(tile.get("kind", "")) == "elder_stone":
+		return _stylebox(Color(0.12, 0.08, 0.12), Color(0.70, 0.45, 0.86), 3, 5)
 	if str(tile.get("state", "")) == "visited":
 		return _stylebox(Color(0.13, 0.11, 0.08), Color(0.46, 0.36, 0.20), 2, 5)
 	return _stylebox(Color(0.09, 0.085, 0.075), Color(0.28, 0.24, 0.18), 2, 5)
@@ -608,6 +759,36 @@ func _move_button(text: String, direction: String) -> Button:
 	button.pressed.connect(func() -> void: state.move_player(direction))
 	return button
 
+func _skill_disabled_reason(skill: Dictionary, cooldown: int, cost: int) -> String:
+	if state.active_enemy.is_empty() and str(skill.get("targetType", "")) == "enemy" and not state.current_tile().has("encounterId"):
+		return "Need target"
+	if cooldown > 0:
+		return "CD %d" % cooldown
+	if str(skill.get("resource", "")) == "mana" and int(state.player.get("mana", 0)) < cost:
+		return "Need %d Mana" % cost
+	return ""
+
+func _skill_tooltip(skill: Dictionary, cooldown: int, cost: int, disabled_reason: String) -> String:
+	var lines: Array[String] = [
+		str(skill.get("description", "")),
+		"Cost: %d Mana" % cost if str(skill.get("resource", "")) == "mana" else "Cost: None",
+		"Cooldown: %s" % ("None" if int(skill.get("cooldownTurns", 0)) == 0 else "%d turns" % int(skill.get("cooldownTurns", 0))),
+	]
+	if cooldown > 0:
+		lines.append("Current cooldown: %d" % cooldown)
+	if disabled_reason != "":
+		lines.append("Unavailable: %s" % disabled_reason)
+	return "\n".join(lines)
+
+func _apply_skill_button_style(button: Button) -> void:
+	match state.selected_class_id:
+		"roadwarden":
+			button.add_theme_stylebox_override("normal", _stylebox(Color(0.12, 0.12, 0.11), Color(0.75, 0.58, 0.27), 2, 5))
+		"ember_sage":
+			button.add_theme_stylebox_override("normal", _stylebox(Color(0.16, 0.07, 0.04), Color(0.86, 0.36, 0.16), 2, 5))
+		"gravebound_scout":
+			button.add_theme_stylebox_override("normal", _stylebox(Color(0.08, 0.11, 0.09), Color(0.38, 0.62, 0.48), 2, 5))
+
 func _text_button(text: String, tooltip: String) -> Button:
 	var button := Button.new()
 	button.text = text
@@ -615,7 +796,11 @@ func _text_button(text: String, tooltip: String) -> Button:
 	button.focus_mode = Control.FOCUS_ALL
 	button.custom_minimum_size = Vector2(132, 42)
 	button.add_theme_stylebox_override("normal", _stylebox(Color(0.15, 0.10, 0.06), Color(0.66, 0.48, 0.22), 2, 5))
+	button.add_theme_stylebox_override("hover", _stylebox(Color(0.20, 0.13, 0.07), Color(0.90, 0.66, 0.28), 2, 5))
+	button.add_theme_stylebox_override("focus", _stylebox(Color(0.18, 0.12, 0.07), Color(1.0, 0.82, 0.34), 3, 5))
+	button.add_theme_stylebox_override("disabled", _stylebox(Color(0.09, 0.075, 0.06), Color(0.34, 0.28, 0.20), 2, 5))
 	button.add_theme_color_override("font_color", Color(0.95, 0.83, 0.54))
+	button.add_theme_color_override("font_disabled_color", Color(0.58, 0.50, 0.36))
 	return button
 
 func _image_button(texture: Texture2D, tooltip: String) -> TextureButton:
@@ -628,6 +813,36 @@ func _image_button(texture: Texture2D, tooltip: String) -> TextureButton:
 	button.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
 	button.tooltip_text = tooltip
 	return button
+
+func _add_section(parent: Control, title: String) -> VBoxContainer:
+	var panel := PanelContainer.new()
+	panel.add_theme_stylebox_override("panel", _stylebox(Color(0.83, 0.67, 0.40), Color(0.43, 0.28, 0.12), 2, 6))
+	parent.add_child(panel)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 5)
+	panel.add_child(box)
+	var label := _dark_label(title)
+	label.add_theme_font_size_override("font_size", 17)
+	box.add_child(label)
+	return box
+
+func _stat_bar() -> ProgressBar:
+	var bar := ProgressBar.new()
+	bar.custom_minimum_size = Vector2(0, 12)
+	bar.show_percentage = false
+	return bar
+
+func _action_group(title: String, content: Control) -> PanelContainer:
+	var panel := PanelContainer.new()
+	panel.add_theme_stylebox_override("panel", _stylebox(Color(0.08, 0.06, 0.045), Color(0.46, 0.34, 0.16), 2, 6))
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 4)
+	panel.add_child(box)
+	var label := _gold_label(title)
+	label.add_theme_font_size_override("font_size", 12)
+	box.add_child(label)
+	box.add_child(content)
+	return panel
 
 func _load_texture(path: String) -> Texture2D:
 	if texture_cache.has(path):
@@ -733,6 +948,23 @@ func _message_color(type: String) -> Color:
 			return Color(0.50, 0.04, 0.16)
 		_:
 			return Color(0.20, 0.13, 0.07)
+
+func _message_label(type: String) -> String:
+	match type:
+		"success":
+			return "Success"
+		"warning":
+			return "Warning"
+		"combat":
+			return "Combat"
+		"loot":
+			return "Loot"
+		"discovery":
+			return "Discovery"
+		"curse":
+			return "Curse"
+		_:
+			return "Info"
 
 func _ensure_inputs() -> void:
 	_add_key_action("phase3_move_north", KEY_W)
