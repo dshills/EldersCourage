@@ -192,6 +192,9 @@ func validateDocument(path string, value any, seenIDs map[string]string) error {
 	if strings.Contains(cleanPath, "/phase8/ring_souls.json") {
 		return validatePhase8RingSoulDocument(path, value)
 	}
+	if strings.Contains(cleanPath, "/phase9/item_resonances.json") {
+		return validatePhase9ResonanceDocument(path, value)
+	}
 	if strings.Contains(cleanPath, "/items/") {
 		return validateItemDocument(path, value)
 	}
@@ -797,6 +800,112 @@ func validatePhase8Bargains(path string, soul map[string]any, seenBargains map[s
 			if _, ok := effect["amount"].(float64); !ok {
 				return fmt.Errorf("%s: phase8 bargain %q effect amount must be numeric", path, bargainID)
 			}
+		}
+	}
+	return nil
+}
+
+func validatePhase9ResonanceDocument(path string, value any) error {
+	seenEffects := map[string]bool{}
+	for _, resonance := range records(value) {
+		for _, field := range []string{"id", "name", "description", "visibility", "discoveryMessage"} {
+			if raw, ok := resonance[field].(string); !ok || strings.TrimSpace(raw) == "" {
+				return fmt.Errorf("%s: phase9 resonance missing string field %q", path, field)
+			}
+		}
+		resonanceID := resonance["id"].(string)
+		visibility := resonance["visibility"].(string)
+		if !validString(visibility, []string{"visible", "hinted", "hidden", "locked_by_identify", "locked_by_attunement", "locked_by_level"}) {
+			return fmt.Errorf("%s: phase9 resonance %q has invalid visibility %q", path, resonanceID, visibility)
+		}
+		if items, ok := resonance["requiredItemIds"].([]any); !ok || len(items) < 2 {
+			return fmt.Errorf("%s: phase9 resonance %q requires at least two requiredItemIds", path, resonanceID)
+		} else {
+			for _, rawItemID := range items {
+				if itemID, ok := rawItemID.(string); !ok || strings.TrimSpace(itemID) == "" {
+					return fmt.Errorf("%s: phase9 resonance %q has invalid required item", path, resonanceID)
+				}
+			}
+		}
+		if slots, ok := resonance["requiredEquippedSlots"].([]any); !ok || len(slots) == 0 {
+			return fmt.Errorf("%s: phase9 resonance %q requires requiredEquippedSlots", path, resonanceID)
+		} else {
+			for _, rawSlot := range slots {
+				slot, ok := rawSlot.(string)
+				if !ok || !validString(slot, []string{"weapon", "armor", "trinket"}) {
+					return fmt.Errorf("%s: phase9 resonance %q has invalid required slot %q", path, resonanceID, rawSlot)
+				}
+			}
+		}
+		requirements, ok := resonance["discoveryRequirements"].([]any)
+		if !ok || len(requirements) == 0 {
+			return fmt.Errorf("%s: phase9 resonance %q requires discoveryRequirements", path, resonanceID)
+		}
+		for _, rawRequirement := range requirements {
+			requirement, ok := rawRequirement.(map[string]any)
+			if !ok {
+				return fmt.Errorf("%s: phase9 resonance %q discovery requirement must be object", path, resonanceID)
+			}
+			requirementType, ok := requirement["type"].(string)
+			if !ok || !validString(requirementType, []string{"equip_together", "items_identified", "identify_item", "attunement_level", "skill_use", "enemy_defeated", "curse_trigger", "blood_price_revealed", "player_level", "location_entered"}) {
+				return fmt.Errorf("%s: phase9 resonance %q has invalid discovery requirement %q", path, resonanceID, requirement["type"])
+			}
+			if count, ok := requirement["count"]; ok {
+				if value, ok := count.(float64); !ok || value <= 0 {
+					return fmt.Errorf("%s: phase9 resonance %q requirement count must be positive numeric", path, resonanceID)
+				}
+			}
+		}
+		effects, ok := resonance["effects"].([]any)
+		if !ok {
+			return fmt.Errorf("%s: phase9 resonance %q requires effects", path, resonanceID)
+		}
+		for _, rawEffect := range effects {
+			effect, ok := rawEffect.(map[string]any)
+			if !ok {
+				return fmt.Errorf("%s: phase9 resonance %q effect must be object", path, resonanceID)
+			}
+			if err := validatePhase9ResonanceEffect(path, resonanceID, effect, seenEffects); err != nil {
+				return err
+			}
+		}
+		for _, field := range []string{"cursed", "unstable"} {
+			if _, ok := resonance[field].(bool); !ok {
+				return fmt.Errorf("%s: phase9 resonance %q field %q must be boolean", path, resonanceID, field)
+			}
+		}
+	}
+	return nil
+}
+
+func validatePhase9ResonanceEffect(path string, resonanceID string, effect map[string]any, seenEffects map[string]bool) error {
+	effectType, ok := effect["type"].(string)
+	if !ok || !validString(effectType, []string{"stat_bonus", "stat_penalty", "skill_damage_bonus", "skill_heal_bonus", "skill_cost_modifier", "basic_attack_damage_bonus", "curse_health_cost", "message_only", "unlock_merge_recipe"}) {
+		return fmt.Errorf("%s: phase9 resonance %q has invalid effect type %q", path, resonanceID, effect["type"])
+	}
+	key := fmt.Sprintf("%s:%s:%s:%s:%s", resonanceID, effectType, effect["skillId"], effect["stat"], effect["requiresAcceptedBargainId"])
+	if seenEffects[key] {
+		return fmt.Errorf("%s: duplicate phase9 resonance effect %q", path, key)
+	}
+	seenEffects[key] = true
+	if effectType != "message_only" && effectType != "unlock_merge_recipe" {
+		if _, ok := effect["amount"].(float64); !ok {
+			return fmt.Errorf("%s: phase9 resonance %q effect amount must be numeric", path, resonanceID)
+		}
+	}
+	switch effectType {
+	case "stat_bonus", "stat_penalty":
+		stat, ok := effect["stat"].(string)
+		if !ok || !validString(stat, []string{"strength", "defense", "spellPower", "maxHealthBonus", "maxManaBonus"}) {
+			return fmt.Errorf("%s: phase9 resonance %q stat effect requires valid stat", path, resonanceID)
+		}
+	case "skill_damage_bonus", "skill_heal_bonus":
+		if raw, ok := effect["skillId"].(string); !ok || strings.TrimSpace(raw) == "" {
+			return fmt.Errorf("%s: phase9 resonance %q skill effect requires skillId", path, resonanceID)
+		}
+	case "curse_health_cost":
+		if nonlethal, ok := effect["nonlethal"].(bool); !ok || !nonlethal {
+			return fmt.Errorf("%s: phase9 resonance %q health cost must be nonlethal", path, resonanceID)
 		}
 	}
 	return nil
@@ -1452,6 +1561,11 @@ func validateReferences(path string, value any, seenIDs map[string]string, itemT
 			return err
 		}
 	}
+	if strings.Contains(cleanPath, "/phase9/") {
+		if err := validatePhase9References(path, value, seenIDs); err != nil {
+			return err
+		}
+	}
 	if strings.Contains(cleanPath, "/items/") {
 		for _, item := range records(value) {
 			if curse, ok := item["curse"].(map[string]any); ok {
@@ -1654,6 +1768,47 @@ func validatePhase8References(path string, value any, seenIDs map[string]string)
 					if _, exists := seenIDs[skillID]; !exists {
 						return fmt.Errorf("%s: phase8 bargain %q references unknown skill %q", path, bargain["id"], skillID)
 					}
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func validatePhase9References(path string, value any, seenIDs map[string]string) error {
+	cleanPath := filepath.ToSlash(path)
+	if !strings.Contains(cleanPath, "/phase9/item_resonances.json") {
+		return nil
+	}
+	for _, resonance := range records(value) {
+		for _, rawItemID := range asArray(resonance["requiredItemIds"]) {
+			itemID, ok := rawItemID.(string)
+			if !ok || strings.TrimSpace(itemID) == "" {
+				return fmt.Errorf("%s: phase9 resonance %q has invalid item reference", path, resonance["id"])
+			}
+			if _, exists := seenIDs[itemID]; !exists {
+				return fmt.Errorf("%s: phase9 resonance %q references unknown item %q", path, resonance["id"], itemID)
+			}
+		}
+		for _, rawRequirement := range asArray(resonance["discoveryRequirements"]) {
+			requirement, ok := rawRequirement.(map[string]any)
+			if !ok {
+				continue
+			}
+			if skillID, ok := requirement["skillId"].(string); ok && skillID != "" {
+				if _, exists := seenIDs[skillID]; !exists {
+					return fmt.Errorf("%s: phase9 resonance %q references unknown skill %q", path, resonance["id"], skillID)
+				}
+			}
+		}
+		for _, rawEffect := range asArray(resonance["effects"]) {
+			effect, ok := rawEffect.(map[string]any)
+			if !ok {
+				continue
+			}
+			if skillID, ok := effect["skillId"].(string); ok && skillID != "" {
+				if _, exists := seenIDs[skillID]; !exists {
+					return fmt.Errorf("%s: phase9 resonance %q references unknown skill %q", path, resonance["id"], skillID)
 				}
 			}
 		}

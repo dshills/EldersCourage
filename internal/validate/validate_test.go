@@ -314,6 +314,65 @@ func TestDataRejectsPhase8BargainWithoutNonlethalCost(t *testing.T) {
 	}
 }
 
+func TestDataAcceptsPhase9Resonances(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "phase4/skills.json", `[
+		{"id":"ember_bolt","classId":"ember_sage","name":"Ember Bolt","description":"Burn.","icon":"res://bolt.png","targetType":"enemy","resource":"mana","resourceCost":10,"cooldownTurns":0,"effects":[{"type":"damage","amount":10}],"messageTemplate":"Burn {damage}."}
+	]`)
+	writeFile(t, root, "phase4/starter_items.json", `[
+		{"id":"phase4_ember_staff","name":"Ember Staff","type":"weapon","description":"Staff.","icon":"res://staff.png","quantity":1,"stackable":false,"equippable":true,"equipmentSlot":"weapon","stats":{"spellPower":2}}
+	]`)
+	writeFile(t, root, "phase5/items.json", `[
+		{"id":"phase5_ashen_ring","name":"Ashen Ring","type":"trinket","description":"Ring.","icon":"res://ring.png","quantity":1,"stackable":false,"equippable":true,"equipmentSlot":"trinket","stats":{},"defaultKnowledgeState":"unidentified","attunable":true,"maxAttunementLevel":3,"properties":[]}
+	]`)
+	writeFile(t, root, "phase9/item_resonances.json", `[
+		{"id":"coal_remembers_flame","name":"Coal Remembers Flame","description":"Fire.","requiredItemIds":["phase5_ashen_ring","phase4_ember_staff"],"requiredEquippedSlots":["trinket","weapon"],"visibility":"hinted","discoveryRequirements":[{"type":"skill_use","skillId":"ember_bolt"}],"effects":[{"type":"skill_damage_bonus","skillId":"ember_bolt","amount":2}],"discoveryMessage":"Discovered.","cursed":false,"unstable":false}
+	]`)
+
+	if _, err := Data(root); err != nil {
+		t.Fatalf("Data returned error: %v", err)
+	}
+}
+
+func TestDataRejectsPhase9UnknownItemReference(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "phase4/skills.json", `[
+		{"id":"ember_bolt","classId":"ember_sage","name":"Ember Bolt","description":"Burn.","icon":"res://bolt.png","targetType":"enemy","resource":"mana","resourceCost":10,"cooldownTurns":0,"effects":[{"type":"damage","amount":10}],"messageTemplate":"Burn {damage}."}
+	]`)
+	writeFile(t, root, "phase9/item_resonances.json", `[
+		{"id":"coal_remembers_flame","name":"Coal Remembers Flame","description":"Fire.","requiredItemIds":["missing_ring","phase4_ember_staff"],"requiredEquippedSlots":["trinket","weapon"],"visibility":"hinted","discoveryRequirements":[{"type":"skill_use","skillId":"ember_bolt"}],"effects":[{"type":"skill_damage_bonus","skillId":"ember_bolt","amount":2}],"discoveryMessage":"Discovered.","cursed":false,"unstable":false}
+	]`)
+
+	_, err := Data(root)
+	if err == nil {
+		t.Fatal("Data returned nil error for unknown phase9 item")
+	}
+	if !strings.Contains(err.Error(), "unknown item") {
+		t.Fatalf("error = %q, want unknown item", err.Error())
+	}
+}
+
+func TestDataRejectsPhase9LethalHealthCost(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "phase4/starter_items.json", `[
+		{"id":"phase4_ember_staff","name":"Ember Staff","type":"weapon","description":"Staff.","icon":"res://staff.png","quantity":1,"stackable":false,"equippable":true,"equipmentSlot":"weapon","stats":{"spellPower":2}}
+	]`)
+	writeFile(t, root, "phase5/items.json", `[
+		{"id":"phase5_ashen_ring","name":"Ashen Ring","type":"trinket","description":"Ring.","icon":"res://ring.png","quantity":1,"stackable":false,"equippable":true,"equipmentSlot":"trinket","stats":{},"defaultKnowledgeState":"unidentified","attunable":true,"maxAttunementLevel":3,"properties":[]}
+	]`)
+	writeFile(t, root, "phase9/item_resonances.json", `[
+		{"id":"breath_debt","name":"Breath Debt","description":"Cost.","requiredItemIds":["phase5_ashen_ring","phase4_ember_staff"],"requiredEquippedSlots":["trinket","weapon"],"visibility":"hidden","discoveryRequirements":[{"type":"curse_trigger"}],"effects":[{"type":"curse_health_cost","amount":1,"nonlethal":false}],"discoveryMessage":"Cursed.","cursed":true,"unstable":false}
+	]`)
+
+	_, err := Data(root)
+	if err == nil {
+		t.Fatal("Data returned nil error for lethal phase9 health cost")
+	}
+	if !strings.Contains(err.Error(), "nonlethal") {
+		t.Fatalf("error = %q, want nonlethal", err.Error())
+	}
+}
+
 func TestDataRejectsMalformedJSON(t *testing.T) {
 	root := t.TempDir()
 	writeFile(t, root, "items/broken.json", `{"id":`)

@@ -1,0 +1,80 @@
+[
+  {
+    "id": "coal_remembers_flame",
+    "name": "Coal Remembers Flame",
+    "description": "The Ashen Ring feeds old fire through the Ember Staff.",
+    "requiredItemIds": ["phase5_ashen_ring", "phase4_ember_staff"],
+    "requiredEquippedSlots": ["trinket", "weapon"],
+    "visibility": "hinted",
+    "hint": "Something in the Ashen Ring reacts to old fire.",
+    "discoveryRequirements": [
+      { "type": "skill_use", "skillId": "ember_bolt" }
+    ],
+    "effects": [
+      { "type": "skill_damage_bonus", "skillId": "ember_bolt", "amount": 2 },
+      { "type": "skill_damage_bonus", "skillId": "ember_bolt", "amount": 1, "requiresAcceptedBargainId": "breath_for_flame" }
+    ],
+    "discoveryMessage": "The Ashen Ring warms around the Ember Staff's rhythm. Resonance discovered: Coal Remembers Flame.",
+    "whisper": "There. The staff is inelegant, but even a shovel may conduct lightning if history is desperate.",
+    "cursed": false,
+    "unstable": false
+  },
+  {
+    "id": "road_oath_tempered",
+    "name": "Road Oath Tempered",
+    "description": "Old road gear recognizes old road duty.",
+    "requiredItemIds": ["phase5_roadwardens_notched_blade", "phase3_roadwarden_vest"],
+    "requiredEquippedSlots": ["weapon", "armor"],
+    "visibility": "visible",
+    "discoveryRequirements": [
+      { "type": "equip_together" },
+      { "type": "items_identified" }
+    ],
+    "effects": [
+      { "type": "stat_bonus", "stat": "defense", "amount": 1 },
+      { "type": "skill_damage_bonus", "skillId": "guarded_strike", "amount": 1 }
+    ],
+    "discoveryMessage": "The blade and vest settle into the same old oath. Resonance discovered: Road Oath Tempered.",
+    "cursed": false,
+    "unstable": false
+  },
+  {
+    "id": "grave_thread",
+    "name": "Grave Thread",
+    "description": "The cloak bends sound around the knife hand.",
+    "requiredItemIds": ["phase5_whisperthread_cloak", "phase4_scout_knife"],
+    "requiredEquippedSlots": ["armor", "weapon"],
+    "visibility": "hidden",
+    "discoveryRequirements": [
+      { "type": "enemy_defeated", "classId": "gravebound_scout", "count": 1 },
+      { "type": "enemy_defeated", "count": 2 }
+    ],
+    "effects": [
+      { "type": "skill_damage_bonus", "skillId": "piercing_shot", "amount": 2 },
+      { "type": "skill_heal_bonus", "skillId": "grave_touch", "amount": 1 }
+    ],
+    "discoveryMessage": "The Whisperthread Cloak tightens as the blade falls silent. Resonance discovered: Grave Thread.",
+    "cursed": false,
+    "unstable": false
+  },
+  {
+    "id": "breath_debt",
+    "name": "Breath Debt",
+    "description": "The charm clarifies Varn's hunger too well.",
+    "requiredItemIds": ["phase5_ashen_ring", "phase5_elder_glass_charm"],
+    "requiredEquippedSlots": ["trinket", "trinket"],
+    "visibility": "hidden",
+    "discoveryRequirements": [
+      { "type": "curse_trigger", "curseId": "phase5_ashen_ring_blood_price" },
+      { "type": "blood_price_revealed" }
+    ],
+    "effects": [
+      { "type": "skill_cost_modifier", "amount": -1 },
+      { "type": "curse_health_cost", "amount": 1, "nonlethal": true }
+    ],
+    "discoveryMessage": "The Elder Glass Charm sharpens the ring's hunger. Cursed resonance revealed: Breath Debt.",
+    "whisper": "Efficiency always requires sacrifice. Preferably yours.",
+    "cursed": true,
+    "unstable": false
+  }
+]
