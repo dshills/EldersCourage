@@ -144,8 +144,13 @@ func _build_header() -> Control:
 	header_zone_label = _gold_label("")
 	header_zone_label.add_theme_font_size_override("font_size", UITheme.FONT_HEADER)
 	stack.add_child(header_zone_label)
+	var divider := ColorRect.new()
+	divider.color = Color(0.58, 0.43, 0.20, 0.65)
+	divider.custom_minimum_size = Vector2(0, 2)
+	stack.add_child(divider)
 	header_meta_label = _gold_label("")
 	header_meta_label.add_theme_font_size_override("font_size", 16)
+	header_meta_label.add_theme_color_override("font_color", UITheme.color("text_secondary"))
 	stack.add_child(header_meta_label)
 	header_xp_bar = ProgressBar.new()
 	header_xp_bar.custom_minimum_size = Vector2(360, 12)
@@ -419,12 +424,11 @@ func _refresh() -> void:
 func _refresh_header() -> void:
 	var vm: Dictionary = UIViewModels.get_header_view_model(state)
 	header_zone_label.text = str(vm.get("zone", "Elder Road Outskirts"))
-	header_meta_label.text = "%s  Lv. %d    XP %d/%d    Talent Pts %d    Gold %d" % [
+	header_meta_label.text = "%s - Level %d    XP %d/%d    Gold %d" % [
 		vm.get("className", "Choose Class"),
 		int(vm.get("level", 1)),
 		int(vm.get("xp", 0)),
 		int(vm.get("xpToNextLevel", 50)),
-		int(vm.get("talentPoints", 0)),
 		int(vm.get("gold", 0)),
 	]
 	header_xp_bar.max_value = float(maxi(1, int(vm.get("xpToNextLevel", 50))))
