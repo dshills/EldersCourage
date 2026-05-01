@@ -40,6 +40,8 @@ var inventory_panel: PanelContainer
 var inventory_grid: GridContainer
 var item_details: RichTextLabel
 var class_panel: PanelContainer
+var bargain_panel: PanelContainer
+var bargain_text: RichTextLabel
 var talent_panel: PanelContainer
 var talent_box: VBoxContainer
 var quest_panel: PanelContainer
@@ -131,6 +133,9 @@ func _build_screen() -> void:
 	add_child(quest_panel)
 	class_panel = _build_class_panel()
 	add_child(class_panel)
+	bargain_panel = _build_bargain_panel()
+	bargain_panel.visible = false
+	add_child(bargain_panel)
 
 func _build_header() -> Control:
 	var frame := PanelContainer.new()
@@ -428,6 +433,32 @@ func _class_card(class_id: String) -> PanelContainer:
 	box.add_child(begin)
 	return card
 
+func _build_bargain_panel() -> PanelContainer:
+	var panel := PanelContainer.new()
+	_configure_overlay(panel, Vector2(520, 300))
+	panel.add_theme_stylebox_override("panel", _stylebox(UITheme.color("panel_deep"), UITheme.color("curse"), 3, 8))
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 12)
+	panel.add_child(box)
+	var title := _gold_label("Breath for Flame")
+	title.add_theme_font_size_override("font_size", 26)
+	box.add_child(title)
+	bargain_text = RichTextLabel.new()
+	bargain_text.bbcode_enabled = true
+	bargain_text.fit_content = true
+	bargain_text.custom_minimum_size = Vector2(460, 150)
+	box.add_child(bargain_text)
+	var buttons := HBoxContainer.new()
+	buttons.add_theme_constant_override("separation", 10)
+	box.add_child(buttons)
+	var accept := _text_button("Accept", "Pay health and accept Varn's bargain", "danger")
+	accept.pressed.connect(state.accept_pending_bargain)
+	buttons.add_child(accept)
+	var reject := _text_button("Reject", "Refuse Varn's bargain", "secondary")
+	reject.pressed.connect(state.reject_pending_bargain)
+	buttons.add_child(reject)
+	return panel
+
 func _refresh() -> void:
 	if map_grid == null:
 		return
@@ -442,6 +473,7 @@ func _refresh() -> void:
 	_refresh_skills()
 	_refresh_talents()
 	_refresh_quest_panel()
+	_refresh_bargain_panel()
 	_refresh_actions()
 	_play_last_animation()
 	class_panel.visible = not state.class_selected
@@ -708,7 +740,7 @@ func _refresh_inventory() -> void:
 		item_details.text = prompt
 	else:
 		var selected_definition: Dictionary = state.item_definition(selected)
-		item_details.text = "[b][color=#f0d680]%s[/color][/b]\n%s\nKnowledge: %s\n\n%s\n\nQuantity: %d%s%s" % [
+		item_details.text = "[b][color=#f0d680]%s[/color][/b]\n%s\nKnowledge: %s\n\n%s\n\nQuantity: %d%s%s%s" % [
 			state.display_name(selected),
 			selected_definition.get("type", "item"),
 			selected.get("knowledgeState", "known"),
@@ -716,7 +748,24 @@ func _refresh_inventory() -> void:
 			int(selected.get("quantity", 1)),
 			_stats_text(selected_definition.get("stats", {})),
 			_discovery_text(selected),
+			_soul_text(selected),
 		]
+
+func _refresh_bargain_panel() -> void:
+	var pending: Dictionary = state.ui.get("pendingBargain", {})
+	bargain_panel.visible = not pending.is_empty()
+	if not bargain_panel.visible:
+		return
+	var item: Dictionary = state.inventory_item(str(pending.get("itemInstanceId", "")))
+	var bargain: Dictionary = state._ring_bargain_definition(item, str(pending.get("bargainId", "")))
+	if item.is_empty() or bargain.is_empty():
+		bargain_text.text = "[color=#e8d39c]The bargain is no longer available.[/color]"
+		return
+	var cost: Dictionary = bargain.get("healthCost", {})
+	bargain_text.text = "[color=#e8d39c]%s[/color]\n\nCost: %d health, not below 1.\nReward: Ember Bolt +2 damage.\n\nAccept or reject the ring's offer." % [
+		bargain.get("offerLine", ""),
+		int(cost.get("amount", 0)),
+	]
 
 func _refresh_actions() -> void:
 	var vm: Dictionary = UIViewModels.get_action_availability_view_model(state)
@@ -1083,6 +1132,45 @@ func _discovery_text(item: Dictionary) -> String:
 	if lines.is_empty():
 		return ""
 	return "\n\n%s" % "\n".join(lines)
+
+func _soul_text(item: Dictionary) -> String:
+	if not item.has("soul"):
+		return ""
+	var soul: Dictionary = item.get("soul", {})
+	var soul_definition: Dictionary = state.ring_soul_definition(item)
+	var lines: Array[String] = []
+	var stage: int = state.ring_soul_reveal_stage(item)
+	if stage <= 0:
+		lines.append("Soul: ???")
+	elif stage == 1:
+		lines.append("Soul: A presence stirs inside the ring.")
+	else:
+		lines.append("Soul: %s, %s" % [soul_definition.get("name", "Unknown"), soul_definition.get("epithet", "the bound")])
+		lines.append("Trust: %+d" % int(soul.get("trust", 0)))
+	if stage >= 3:
+		lines.append("Motivation: %s" % soul_definition.get("motivation", ""))
+	var memory_ids: Array = soul.get("memoryIdsRevealed", [])
+	if not memory_ids.is_empty():
+		lines.append("Memories:")
+		for memory in soul_definition.get("memories", []):
+			if memory_ids.has(str(memory.get("id", ""))):
+				lines.append("- %s: %s" % [memory.get("title", "Memory"), memory.get("text", "")])
+	var offered: Array = soul.get("bargainIdsOffered", [])
+	var accepted: Array = soul.get("bargainIdsAccepted", [])
+	var rejected: Array = soul.get("bargainIdsRejected", [])
+	if not offered.is_empty() or not accepted.is_empty() or not rejected.is_empty():
+		lines.append("Bargains:")
+		for bargain in soul_definition.get("bargains", []):
+			var bargain_id := str(bargain.get("id", ""))
+			if accepted.has(bargain_id):
+				lines.append("- %s: accepted" % bargain.get("name", bargain_id))
+			elif rejected.has(bargain_id):
+				lines.append("- %s: rejected" % bargain.get("name", bargain_id))
+			elif offered.has(bargain_id):
+				lines.append("- %s: offered" % bargain.get("name", bargain_id))
+	if lines.is_empty():
+		return ""
+	return "\n\n[color=#d6c4ff][b]Ring Soul[/b][/color]\n%s" % "\n".join(lines)
 
 func _skill_names(skill_ids: Array) -> Array[String]:
 	var names: Array[String] = []
