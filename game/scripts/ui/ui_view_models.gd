@@ -76,7 +76,7 @@ static func get_tile_view_model(game_state, tile: Dictionary) -> Dictionary:
 		"name": str(tile.get("name", "Tile")),
 		"marker": marker,
 		"current": is_current,
-		"label": "%s%s\n%s" % ["YOU\n" if is_current else "", marker, tile.get("name", "Tile")],
+		"label": "%s%s\n%s" % ["YOU\n" if is_current else "", tile.get("name", "Tile"), marker],
 		"tooltip": "%s\n%s" % [tile.get("name", "Tile"), _location_description(game_state, tile)],
 	}
 

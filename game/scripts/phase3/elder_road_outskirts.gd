@@ -173,19 +173,30 @@ func _build_map_panel() -> PanelContainer:
 	var title := _gold_label("Elder Road Outskirts")
 	title.add_theme_font_size_override("font_size", 24)
 	box.add_child(title)
+	var content := HBoxContainer.new()
+	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	content.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	content.add_theme_constant_override("separation", UITheme.SECTION_GAP)
+	box.add_child(content)
 	map_grid = GridContainer.new()
 	map_grid.columns = 5
 	map_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	map_grid.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	map_grid.add_theme_constant_override("h_separation", UITheme.TILE_GAP)
 	map_grid.add_theme_constant_override("v_separation", UITheme.TILE_GAP)
-	box.add_child(map_grid)
+	content.add_child(map_grid)
+	var detail_panel := PanelContainer.new()
+	detail_panel.custom_minimum_size = Vector2(260, 0)
+	detail_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	detail_panel.add_theme_stylebox_override("panel", _stylebox(Color(0.10, 0.078, 0.055), UITheme.color("border_muted"), 1, 6))
+	content.add_child(detail_panel)
 	location_details = RichTextLabel.new()
 	location_details.bbcode_enabled = true
 	location_details.fit_content = true
-	location_details.custom_minimum_size = Vector2(0, 98)
+	location_details.custom_minimum_size = Vector2(240, 0)
+	location_details.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	location_details.add_theme_font_size_override("normal_font_size", 14)
-	box.add_child(location_details)
+	detail_panel.add_child(location_details)
 	return panel
 
 func _build_side_panel() -> Control:
@@ -511,7 +522,7 @@ func _refresh_map() -> void:
 		button.icon = texture
 		button.expand_icon = true
 		button.text = _tile_text(tile)
-		button.tooltip_text = "%s\n%s" % [tile.get("name", "Tile"), _location_description(tile)]
+		button.tooltip_text = str(UIViewModels.get_tile_view_model(state, tile).get("tooltip", ""))
 		button.add_theme_stylebox_override("normal", _tile_style(tile))
 		button.add_theme_stylebox_override("hover", _stylebox(Color(0.18, 0.14, 0.09), Color(0.95, 0.73, 0.34), 2, 5))
 		button.pressed.connect(func(tile_position := _tile_position(tile)) -> void: _move_to_adjacent(tile_position))
