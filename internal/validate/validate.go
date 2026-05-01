@@ -198,6 +198,15 @@ func validateDocument(path string, value any, seenIDs map[string]string) error {
 	if strings.Contains(cleanPath, "/phase9/item_merges.json") {
 		return validatePhase9MergeDocument(path, value)
 	}
+	if strings.Contains(cleanPath, "/phase10/zone_") {
+		return validatePhase10ZoneDocument(path, value)
+	}
+	if strings.Contains(cleanPath, "/phase10/hazards.json") {
+		return validatePhase10HazardDocument(path, value)
+	}
+	if strings.Contains(cleanPath, "/phase10/quest_chain_") {
+		return validatePhase3QuestChainDocument(path, value)
+	}
 	if strings.Contains(cleanPath, "/items/") {
 		return validateItemDocument(path, value)
 	}
@@ -1155,6 +1164,110 @@ func validatePhase3ZoneDocument(path string, value any) error {
 	return nil
 }
 
+func validatePhase10ZoneDocument(path string, value any) error {
+	zones := records(value)
+	if len(zones) != 1 {
+		return fmt.Errorf("%s: phase10 zone document must contain one object", path)
+	}
+	zone := zones[0]
+	for _, field := range []string{"id", "name", "description"} {
+		if raw, ok := zone[field].(string); !ok || strings.TrimSpace(raw) == "" {
+			return fmt.Errorf("%s: phase10 zone missing string field %q", path, field)
+		}
+	}
+	width, widthOK := zone["width"].(float64)
+	height, heightOK := zone["height"].(float64)
+	if !widthOK || !heightOK || width <= 0 || height <= 0 {
+		return fmt.Errorf("%s: phase10 zone requires positive width and height", path)
+	}
+	if err := validatePoint(path, zone["id"], "startPosition", zone["startPosition"]); err != nil {
+		return err
+	}
+	tiles, ok := zone["tiles"].([]any)
+	if !ok || len(tiles) == 0 {
+		return fmt.Errorf("%s: phase10 zone %q requires tiles", path, zone["id"])
+	}
+	seenPositions := map[string]bool{}
+	for _, rawTile := range tiles {
+		tile, ok := rawTile.(map[string]any)
+		if !ok {
+			return fmt.Errorf("%s: phase10 zone tile must be object", path)
+		}
+		for _, field := range []string{"id", "kind", "name", "description", "state"} {
+			if raw, ok := tile[field].(string); !ok || strings.TrimSpace(raw) == "" {
+				return fmt.Errorf("%s: phase10 zone tile missing string field %q", path, field)
+			}
+		}
+		kind := tile["kind"].(string)
+		if !validString(kind, []string{"entry", "return", "ash_path", "burned_woods", "cache", "shrine", "hazard", "enemy", "objective", "cairn"}) {
+			return fmt.Errorf("%s: phase10 zone tile %q has invalid kind %q", path, tile["id"], kind)
+		}
+		state := tile["state"].(string)
+		if !validString(state, []string{"hidden", "visible", "visited"}) {
+			return fmt.Errorf("%s: phase10 zone tile %q has invalid state %q", path, tile["id"], state)
+		}
+		if err := validatePoint(path, tile["id"], "position", tile["position"]); err != nil {
+			return err
+		}
+		position := tile["position"].([]any)
+		x := position[0].(float64)
+		y := position[1].(float64)
+		if x < 0 || y < 0 || x >= width || y >= height {
+			return fmt.Errorf("%s: phase10 zone tile %q position out of bounds", path, tile["id"])
+		}
+		positionKey := fmt.Sprintf("%d,%d", int(x), int(y))
+		if seenPositions[positionKey] {
+			return fmt.Errorf("%s: phase10 zone has duplicate tile position %s", path, positionKey)
+		}
+		seenPositions[positionKey] = true
+	}
+	return nil
+}
+
+func validatePhase10HazardDocument(path string, value any) error {
+	for _, hazard := range records(value) {
+		for _, field := range []string{"id", "name", "description", "trigger"} {
+			if raw, ok := hazard[field].(string); !ok || strings.TrimSpace(raw) == "" {
+				return fmt.Errorf("%s: phase10 hazard missing string field %q", path, field)
+			}
+		}
+		if !validString(hazard["trigger"].(string), []string{"on_enter_tile", "on_interact"}) {
+			return fmt.Errorf("%s: phase10 hazard %q has invalid trigger %q", path, hazard["id"], hazard["trigger"])
+		}
+		if _, ok := hazard["repeatable"].(bool); !ok {
+			return fmt.Errorf("%s: phase10 hazard %q repeatable must be boolean", path, hazard["id"])
+		}
+		effects, ok := hazard["effects"].([]any)
+		if !ok || len(effects) == 0 {
+			return fmt.Errorf("%s: phase10 hazard %q requires effects", path, hazard["id"])
+		}
+		for _, rawEffect := range effects {
+			effect, ok := rawEffect.(map[string]any)
+			if !ok {
+				return fmt.Errorf("%s: phase10 hazard %q effect must be object", path, hazard["id"])
+			}
+			effectType, ok := effect["type"].(string)
+			if !ok || !validString(effectType, []string{"damage_player", "class_resource_loss", "message"}) {
+				return fmt.Errorf("%s: phase10 hazard %q has invalid effect type %q", path, hazard["id"], effect["type"])
+			}
+			if effectType != "message" {
+				if amount, ok := effect["amount"].(float64); !ok || amount <= 0 {
+					return fmt.Errorf("%s: phase10 hazard %q effect amount must be positive numeric", path, hazard["id"])
+				}
+				if nonlethal, ok := effect["nonlethal"].(bool); !ok || !nonlethal {
+					return fmt.Errorf("%s: phase10 hazard %q damage effects must be nonlethal", path, hazard["id"])
+				}
+			}
+			if effectType == "message" {
+				if raw, ok := effect["text"].(string); !ok || strings.TrimSpace(raw) == "" {
+					return fmt.Errorf("%s: phase10 hazard %q message effect requires text", path, hazard["id"])
+				}
+			}
+		}
+	}
+	return nil
+}
+
 func validatePhase2ItemDocument(path string, value any) error {
 	for _, item := range records(value) {
 		for _, field := range []string{"id", "name", "type", "description", "icon"} {
@@ -1618,6 +1731,11 @@ func validateReferences(path string, value any, seenIDs map[string]string, itemT
 			return err
 		}
 	}
+	if strings.Contains(cleanPath, "/phase10/") {
+		if err := validatePhase10References(path, value, seenIDs); err != nil {
+			return err
+		}
+	}
 	if strings.Contains(cleanPath, "/items/") {
 		for _, item := range records(value) {
 			if curse, ok := item["curse"].(map[string]any); ok {
@@ -1964,6 +2082,78 @@ func validatePhase3References(path string, value any, seenIDs map[string]string)
 					}
 					if _, exists := seenIDs[id]; !exists {
 						return fmt.Errorf("%s: phase3 tile %q references unknown %s %q", path, tile["id"], label, id)
+					}
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func validatePhase10References(path string, value any, seenIDs map[string]string) error {
+	cleanPath := filepath.ToSlash(path)
+	if strings.Contains(cleanPath, "/phase10/zone_") {
+		for _, zone := range records(value) {
+			for _, rawTile := range asArray(zone["tiles"]) {
+				tile, ok := rawTile.(map[string]any)
+				if !ok {
+					continue
+				}
+				for field, label := range map[string]string{
+					"encounterId": "encounter",
+					"containerId": "container",
+					"shrineId":    "shrine",
+					"hazardId":    "hazard",
+				} {
+					id, ok := tile[field].(string)
+					if !ok || id == "" {
+						continue
+					}
+					if _, exists := seenIDs[id]; !exists {
+						return fmt.Errorf("%s: phase10 tile %q references unknown %s %q", path, tile["id"], label, id)
+					}
+				}
+				if transition, ok := tile["transition"].(map[string]any); ok {
+					targetZoneID, _ := transition["targetZoneId"].(string)
+					if _, exists := seenIDs[targetZoneID]; !exists {
+						return fmt.Errorf("%s: phase10 tile %q references unknown target zone %q", path, tile["id"], targetZoneID)
+					}
+					if err := validatePoint(path, tile["id"], "transition.targetPosition", transition["targetPosition"]); err != nil {
+						return err
+					}
+					if raw, ok := transition["label"].(string); !ok || strings.TrimSpace(raw) == "" {
+						return fmt.Errorf("%s: phase10 tile %q transition requires label", path, tile["id"])
+					}
+				}
+			}
+		}
+	}
+	if strings.Contains(cleanPath, "/phase10/hazards.json") {
+		for _, hazard := range records(value) {
+			for _, rawMitigation := range asArray(hazard["mitigations"]) {
+				mitigation, ok := rawMitigation.(map[string]any)
+				if !ok {
+					return fmt.Errorf("%s: phase10 hazard %q mitigation must be object", path, hazard["id"])
+				}
+				if resonanceID, ok := mitigation["resonanceId"].(string); ok && resonanceID != "" {
+					if _, exists := seenIDs[resonanceID]; !exists {
+						return fmt.Errorf("%s: phase10 hazard %q references unknown resonance %q", path, hazard["id"], resonanceID)
+					}
+				}
+				if itemID, ok := mitigation["itemId"].(string); ok && itemID != "" {
+					if _, exists := seenIDs[itemID]; !exists {
+						return fmt.Errorf("%s: phase10 hazard %q references unknown item %q", path, hazard["id"], itemID)
+					}
+				}
+			}
+		}
+	}
+	if strings.Contains(cleanPath, "/phase10/quest_chain_") {
+		for _, chain := range records(value) {
+			if reward, ok := chain["completionReward"].(map[string]any); ok {
+				if itemID, ok := reward["itemId"].(string); ok && itemID != "" {
+					if _, exists := seenIDs[itemID]; !exists {
+						return fmt.Errorf("%s: phase10 quest %q references unknown reward item %q", path, chain["id"], itemID)
 					}
 				}
 			}
