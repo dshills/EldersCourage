@@ -210,6 +210,11 @@ func activate_shrine(shrine_id: String) -> void:
 	player["mana"] = mini(effective_max_mana(), int(player["mana"]) + int(shrine.get("restoreMana", 0)))
 	if shrine.has("grantItemId"):
 		add_item(str(shrine["grantItemId"]), 1)
+	if shrine_id == "phase3_weathered_shrine":
+		add_item("phase5_ashen_ring", 1)
+		if not has_item("phase5_identify_scroll"):
+			add_item("phase5_identify_scroll", 1)
+		add_message("At the shrine's base, ash gathers around a blackened ring.", "discovery")
 	add_message("%s restores your strength." % shrine.get("name", "The shrine"), "success")
 	state_changed.emit()
 
