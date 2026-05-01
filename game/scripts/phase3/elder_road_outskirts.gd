@@ -315,8 +315,7 @@ func _movement_pad() -> GridContainer:
 
 func _build_inventory_panel() -> PanelContainer:
 	var panel := PanelContainer.new()
-	panel.position = Vector2(260, 120)
-	panel.size = Vector2(620, 430)
+	_configure_overlay(panel, Vector2(620, 430))
 	panel.add_theme_stylebox_override("panel", _stylebox(UITheme.color("panel_deep"), UITheme.color("border_gold"), 3, 8))
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 10)
@@ -355,8 +354,7 @@ func _build_inventory_panel() -> PanelContainer:
 
 func _build_talent_panel() -> PanelContainer:
 	var panel := PanelContainer.new()
-	panel.position = Vector2(890, 105)
-	panel.size = Vector2(360, 500)
+	_configure_overlay(panel, Vector2(380, 500))
 	panel.add_theme_stylebox_override("panel", _stylebox(UITheme.color("panel_deep"), UITheme.color("border_gold"), 3, 8))
 	talent_box = VBoxContainer.new()
 	talent_box.add_theme_constant_override("separation", 8)
@@ -365,8 +363,7 @@ func _build_talent_panel() -> PanelContainer:
 
 func _build_quest_panel() -> PanelContainer:
 	var panel := PanelContainer.new()
-	panel.position = Vector2(300, 110)
-	panel.size = Vector2(560, 500)
+	_configure_overlay(panel, Vector2(560, 500))
 	panel.add_theme_stylebox_override("panel", _stylebox(UITheme.color("panel_deep"), UITheme.color("border_gold"), 3, 8))
 	quest_panel_box = VBoxContainer.new()
 	quest_panel_box.add_theme_constant_override("separation", 8)
@@ -375,8 +372,7 @@ func _build_quest_panel() -> PanelContainer:
 
 func _build_class_panel() -> PanelContainer:
 	var panel := PanelContainer.new()
-	panel.position = Vector2(160, 90)
-	panel.size = Vector2(960, 540)
+	_configure_overlay(panel, Vector2(960, 540))
 	panel.add_theme_stylebox_override("panel", _stylebox(UITheme.color("panel_deep"), Color(0.76, 0.58, 0.28), 4, 8))
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 14)
@@ -946,6 +942,15 @@ func _action_group(title: String, content: Control) -> PanelContainer:
 	box.add_child(label)
 	box.add_child(content)
 	return panel
+
+func _configure_overlay(panel: PanelContainer, overlay_size: Vector2) -> void:
+	panel.set_anchors_preset(Control.PRESET_CENTER)
+	panel.custom_minimum_size = overlay_size
+	panel.size = overlay_size
+	panel.offset_left = -overlay_size.x / 2.0
+	panel.offset_top = -overlay_size.y / 2.0
+	panel.offset_right = overlay_size.x / 2.0
+	panel.offset_bottom = overlay_size.y / 2.0
 
 func _load_texture(path: String) -> Texture2D:
 	if texture_cache.has(path):
