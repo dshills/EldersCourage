@@ -36,6 +36,8 @@ var item_details: RichTextLabel
 var class_panel: PanelContainer
 var talent_panel: PanelContainer
 var talent_box: VBoxContainer
+var quest_panel: PanelContainer
+var quest_panel_box: VBoxContainer
 var skill_bar: HBoxContainer
 var interact_button: Button
 var shrine_button: Button
@@ -73,6 +75,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		state.toggle_panel("quests")
 	elif event.is_action_pressed("phase3_debug"):
 		state.toggle_debug_mode()
+	elif event.is_action_pressed("phase3_skill_1"):
+		_use_skill_slot(0)
+	elif event.is_action_pressed("phase3_skill_2"):
+		_use_skill_slot(1)
 	elif event.is_action_pressed("ui_cancel"):
 		state.handle_escape()
 
@@ -109,6 +115,9 @@ func _build_screen() -> void:
 	talent_panel = _build_talent_panel()
 	talent_panel.visible = false
 	add_child(talent_panel)
+	quest_panel = _build_quest_panel()
+	quest_panel.visible = false
+	add_child(quest_panel)
 	class_panel = _build_class_panel()
 	add_child(class_panel)
 
@@ -280,6 +289,9 @@ func _build_inventory_panel() -> PanelContainer:
 	var title := _gold_label("Inventory and Equipment")
 	title.add_theme_font_size_override("font_size", 26)
 	box.add_child(title)
+	var close := _text_button("Close", "Close inventory")
+	close.pressed.connect(state.close_panel)
+	box.add_child(close)
 	var content := HBoxContainer.new()
 	content.add_theme_constant_override("separation", 14)
 	box.add_child(content)
@@ -314,6 +326,16 @@ func _build_talent_panel() -> PanelContainer:
 	talent_box = VBoxContainer.new()
 	talent_box.add_theme_constant_override("separation", 8)
 	panel.add_child(talent_box)
+	return panel
+
+func _build_quest_panel() -> PanelContainer:
+	var panel := PanelContainer.new()
+	panel.position = Vector2(300, 110)
+	panel.size = Vector2(560, 500)
+	panel.add_theme_stylebox_override("panel", _stylebox(Color(0.055, 0.045, 0.035, 0.98), Color(0.68, 0.52, 0.24), 3, 8))
+	quest_panel_box = VBoxContainer.new()
+	quest_panel_box.add_theme_constant_override("separation", 8)
+	panel.add_child(quest_panel_box)
 	return panel
 
 func _build_class_panel() -> PanelContainer:
@@ -386,6 +408,7 @@ func _refresh() -> void:
 	_refresh_inventory()
 	_refresh_skills()
 	_refresh_talents()
+	_refresh_quest_panel()
 	_refresh_actions()
 	class_panel.visible = not state.class_selected
 
@@ -545,6 +568,9 @@ func _refresh_talents() -> void:
 	for child in talent_box.get_children():
 		child.queue_free()
 	var tree: Dictionary = state.current_talent_tree()
+	var close := _text_button("Close", "Close talents")
+	close.pressed.connect(state.close_panel)
+	talent_box.add_child(close)
 	var title := _gold_label("%s  Points: %d" % [tree.get("name", "Talents"), int(state.player.get("talents", {}).get("availablePoints", 0))])
 	title.add_theme_font_size_override("font_size", 22)
 	talent_box.add_child(title)
@@ -562,6 +588,38 @@ func _refresh_talents() -> void:
 		button.disabled = not state.can_spend_talent(talent)
 		button.pressed.connect(func(id := str(talent.get("id", ""))) -> void: state.spend_talent_point(id))
 		talent_box.add_child(button)
+
+func _refresh_quest_panel() -> void:
+	quest_panel.visible = str(state.ui.get("activePanel", "")) == "quests" or str(state.ui.get("activePanel", "")) == "log"
+	for child in quest_panel_box.get_children():
+		child.queue_free()
+	var close := _text_button("Close", "Close panel")
+	close.pressed.connect(state.close_panel)
+	quest_panel_box.add_child(close)
+	var title := _gold_label("Quest and Log")
+	title.add_theme_font_size_override("font_size", 26)
+	quest_panel_box.add_child(title)
+	var quest_title := _gold_label(str(state.quest_chain.get("title", "The Elder Road")))
+	quest_title.add_theme_font_size_override("font_size", 20)
+	quest_panel_box.add_child(quest_title)
+	for stage in state.quest_chain.get("stages", []):
+		var stage_line := _gold_label("%s %s" % ["[x]" if bool(stage.get("completed", false)) else "[ ]", stage.get("title", "Stage")])
+		stage_line.add_theme_font_size_override("font_size", 16)
+		quest_panel_box.add_child(stage_line)
+		for objective in stage.get("objectives", []):
+			var objective_line := _gold_label("  %s %s" % ["[x]" if bool(objective.get("completed", false)) else "[ ]", objective.get("label", "")])
+			objective_line.add_theme_font_size_override("font_size", 13)
+			quest_panel_box.add_child(objective_line)
+	var log_title := _gold_label("Recent Log")
+	log_title.add_theme_font_size_override("font_size", 20)
+	quest_panel_box.add_child(log_title)
+	var visible_messages: Array = state.messages.duplicate()
+	visible_messages.reverse()
+	for message in visible_messages:
+		var line := _gold_label("[%s] %s" % [_message_label(str(message.get("type", "info"))), message.get("text", "")])
+		line.add_theme_font_size_override("font_size", 13)
+		line.add_theme_color_override("font_color", _message_color(str(message.get("type", "info"))))
+		quest_panel_box.add_child(line)
 
 func _refresh_quest() -> void:
 	for child in quest_box.get_children():
@@ -671,6 +729,13 @@ func _interact() -> void:
 		state.start_encounter(str(tile["encounterId"]))
 	else:
 		state.add_message("There is nothing to interact with here.", "warning")
+
+func _use_skill_slot(index: int) -> void:
+	var skills: Array = state.player.get("skills", {}).get("knownSkillIds", [])
+	if index < 0 or index >= skills.size():
+		state.add_message("No skill is assigned to that slot.", "warning")
+		return
+	state.use_skill(str(skills[index]))
 
 func _move_to_adjacent(target: Vector2i) -> void:
 	var position: Dictionary = state.player.get("position", {})
@@ -978,6 +1043,8 @@ func _ensure_inputs() -> void:
 	_add_key_action("phase3_talents", KEY_T)
 	_add_key_action("phase3_quests", KEY_Q)
 	_add_key_action("phase3_debug", KEY_F3)
+	_add_key_action("phase3_skill_1", KEY_1)
+	_add_key_action("phase3_skill_2", KEY_2)
 	_add_key_action("phase3_move_north", KEY_UP)
 	_add_key_action("phase3_move_south", KEY_DOWN)
 	_add_key_action("phase3_move_west", KEY_LEFT)

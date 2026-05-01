@@ -39,3 +39,39 @@ func TestToggleDebugMode(t *testing.T) {
 		t.Fatal("DebugMode = true, want false")
 	}
 }
+
+func TestHeaderHidesDebugByDefault(t *testing.T) {
+	view := Header("Elder Road", "Ember Sage", 2, 10, 100, 8, false, "0,0", "camp", "")
+	if view.ShowDebug || view.DebugLine != "" {
+		t.Fatalf("debug shown by default: %+v", view)
+	}
+
+	view = Header("Elder Road", "Ember Sage", 2, 10, 100, 8, true, "0,0", "camp", "")
+	if !view.ShowDebug || view.DebugLine == "" {
+		t.Fatalf("debug not shown when enabled: %+v", view)
+	}
+}
+
+func TestVisibleMessagesNewestFirstAndCapped(t *testing.T) {
+	messages := []Message{{Text: "one"}, {Text: "two"}, {Text: "three"}}
+	visible := VisibleMessages(messages, 2)
+
+	if len(visible) != 2 {
+		t.Fatalf("len(visible) = %d, want 2", len(visible))
+	}
+	if visible[0].Text != "three" || visible[1].Text != "two" {
+		t.Fatalf("visible = %+v, want newest first", visible)
+	}
+}
+
+func TestTileMarkers(t *testing.T) {
+	if got := Tile(false, false, true, false, false, false, false, false); got.Marker != "Enemy" || !got.Available {
+		t.Fatalf("enemy tile = %+v, want available Enemy", got)
+	}
+	if got := Tile(false, false, false, true, true, false, false, false); got.Marker != "Opened Cache" || got.Available {
+		t.Fatalf("opened cache tile = %+v, want unavailable Opened Cache", got)
+	}
+	if got := Tile(false, false, false, false, false, true, false, false); got.Marker != "Shrine" || !got.Available {
+		t.Fatalf("shrine tile = %+v, want available Shrine", got)
+	}
+}
