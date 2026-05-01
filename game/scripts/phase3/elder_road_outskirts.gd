@@ -42,6 +42,9 @@ var item_details: RichTextLabel
 var class_panel: PanelContainer
 var bargain_panel: PanelContainer
 var bargain_text: RichTextLabel
+var merge_panel: PanelContainer
+var merge_text: RichTextLabel
+var merge_confirm_button: Button
 var talent_panel: PanelContainer
 var talent_box: VBoxContainer
 var quest_panel: PanelContainer
@@ -136,6 +139,9 @@ func _build_screen() -> void:
 	bargain_panel = _build_bargain_panel()
 	bargain_panel.visible = false
 	add_child(bargain_panel)
+	merge_panel = _build_merge_panel()
+	merge_panel.visible = false
+	add_child(merge_panel)
 
 func _build_header() -> Control:
 	var frame := PanelContainer.new()
@@ -354,6 +360,9 @@ func _build_inventory_panel() -> PanelContainer:
 	var use := _text_button("Use", "Use selected item")
 	use.pressed.connect(func() -> void: state.use_item(state.selected_item_id))
 	details_box.add_child(use)
+	var merge := _text_button("Merge", "Open a merge recipe for the selected item", "magic")
+	merge.pressed.connect(func() -> void: state.open_merge_panel_for_item(state.selected_item_id))
+	details_box.add_child(merge)
 	var cancel_identify := _text_button("Cancel Identify", "Cancel item target mode")
 	cancel_identify.pressed.connect(state.cancel_item_target_mode)
 	details_box.add_child(cancel_identify)
@@ -459,6 +468,32 @@ func _build_bargain_panel() -> PanelContainer:
 	buttons.add_child(reject)
 	return panel
 
+func _build_merge_panel() -> PanelContainer:
+	var panel := PanelContainer.new()
+	_configure_overlay(panel, Vector2(560, 330))
+	panel.add_theme_stylebox_override("panel", _stylebox(UITheme.color("panel_deep"), UITheme.color("magic"), 3, 8))
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 12)
+	panel.add_child(box)
+	var title := _gold_label("Item Merge")
+	title.add_theme_font_size_override("font_size", 26)
+	box.add_child(title)
+	merge_text = RichTextLabel.new()
+	merge_text.bbcode_enabled = true
+	merge_text.fit_content = true
+	merge_text.custom_minimum_size = Vector2(500, 180)
+	box.add_child(merge_text)
+	var buttons := HBoxContainer.new()
+	buttons.add_theme_constant_override("separation", 10)
+	box.add_child(buttons)
+	merge_confirm_button = _text_button("Prepare", "Prepare or confirm this merge", "magic")
+	merge_confirm_button.pressed.connect(state.confirm_pending_merge)
+	buttons.add_child(merge_confirm_button)
+	var cancel := _text_button("Cancel", "Cancel item merge", "secondary")
+	cancel.pressed.connect(state.cancel_pending_merge)
+	buttons.add_child(cancel)
+	return panel
+
 func _refresh() -> void:
 	if map_grid == null:
 		return
@@ -474,6 +509,7 @@ func _refresh() -> void:
 	_refresh_talents()
 	_refresh_quest_panel()
 	_refresh_bargain_panel()
+	_refresh_merge_panel()
 	_refresh_actions()
 	_play_last_animation()
 	class_panel.visible = not state.class_selected
@@ -740,7 +776,7 @@ func _refresh_inventory() -> void:
 		item_details.text = prompt
 	else:
 		var selected_definition: Dictionary = state.item_definition(selected)
-		item_details.text = "[b][color=#f0d680]%s[/color][/b]\n%s\nKnowledge: %s\n\n%s\n\nQuantity: %d%s%s%s%s" % [
+		item_details.text = "[b][color=#f0d680]%s[/color][/b]\n%s\nKnowledge: %s\n\n%s\n\nQuantity: %d%s%s%s%s%s" % [
 			state.display_name(selected),
 			selected_definition.get("type", "item"),
 			selected.get("knowledgeState", "known"),
@@ -750,6 +786,7 @@ func _refresh_inventory() -> void:
 			_discovery_text(selected),
 			_soul_text(selected),
 			_resonance_text(selected),
+			_merge_text(selected),
 		]
 
 func _refresh_bargain_panel() -> void:
@@ -767,6 +804,31 @@ func _refresh_bargain_panel() -> void:
 		bargain.get("offerLine", ""),
 		int(cost.get("amount", 0)),
 	]
+
+func _refresh_merge_panel() -> void:
+	var pending: Dictionary = state.ui.get("pendingMerge", {})
+	merge_panel.visible = not pending.is_empty()
+	if not merge_panel.visible:
+		return
+	var recipe_id := str(pending.get("recipeId", ""))
+	var recipe: Dictionary = state.item_merges_by_id.get(recipe_id, {})
+	if recipe.is_empty():
+		merge_text.text = "[color=#e8d39c]That merge recipe is gone.[/color]"
+		merge_confirm_button.disabled = true
+		return
+	var result_definition: Dictionary = state.items_by_id.get(str(recipe.get("resultItemId", "")), {})
+	var ready: bool = state.can_merge_recipe(recipe_id)
+	var requirements := _merge_requirements_text(recipe)
+	merge_text.text = "[color=#e8d39c]%s[/color]\n%s\n\nResult: %s\nConsumes source items: %s\n\n%s" % [
+		recipe.get("name", recipe_id),
+		recipe.get("description", ""),
+		result_definition.get("name", recipe.get("resultItemId", "")),
+		"yes" if bool(recipe.get("consumesItems", true)) else "no",
+		requirements,
+	]
+	merge_confirm_button.disabled = not ready
+	merge_confirm_button.text = "Confirm Merge" if bool(pending.get("confirm", false)) else "Prepare"
+	merge_confirm_button.tooltip_text = "Bind these items into the merged result." if ready else "Requirements are not complete."
 
 func _refresh_actions() -> void:
 	var vm: Dictionary = UIViewModels.get_action_availability_view_model(state)
@@ -1193,11 +1255,51 @@ func _resonance_text(item: Dictionary) -> String:
 		return ""
 	return "\n\n[color=#94c7b8][b]Resonance[/b][/color]\n%s" % "\n".join(lines)
 
+func _merge_text(item: Dictionary) -> String:
+	var item_id := str(item.get("itemId", ""))
+	var lines: Array[String] = []
+	for recipe in state.hinted_merge_recipes():
+		if not _merge_recipe_involves_item(recipe, item_id):
+			continue
+		var recipe_id := str(recipe.get("id", ""))
+		var prefix := "Ready" if state.can_merge_recipe(recipe_id) else "Hint"
+		lines.append("%s: %s" % [prefix, recipe.get("hint", recipe.get("name", recipe_id))])
+	if lines.is_empty():
+		return ""
+	return "\n\n[color=#b8d6ff][b]Merge[/b][/color]\n%s" % "\n".join(lines)
+
 func _resonance_involves_item(resonance: Dictionary, item_id: String) -> bool:
 	for required_item_id in resonance.get("requiredItemIds", []):
 		if str(required_item_id) == item_id:
 			return true
 	return false
+
+func _merge_recipe_involves_item(recipe: Dictionary, item_id: String) -> bool:
+	for required_item_id in recipe.get("requiredItemIds", []):
+		if str(required_item_id) == item_id:
+			return true
+	return false
+
+func _merge_requirements_text(recipe: Dictionary) -> String:
+	var lines: Array[String] = ["Requirements:"]
+	for item_id in recipe.get("requiredItemIds", []):
+		var item_definition: Dictionary = state.items_by_id.get(str(item_id), {})
+		var owned: bool = state.has_item(str(item_id))
+		lines.append("- %s: %s" % [item_definition.get("name", item_id), "ready" if owned else "missing"])
+	for condition in recipe.get("requiredConditions", []):
+		match str(condition.get("type", "")):
+			"resonance_discovered":
+				var resonance: Dictionary = state.item_resonances_by_id.get(str(condition.get("resonanceId", "")), {})
+				var discovered: bool = state.is_resonance_discovered(str(condition.get("resonanceId", "")))
+				lines.append("- %s discovered: %s" % [resonance.get("name", condition.get("resonanceId", "")), "ready" if discovered else "missing"])
+			"attunement_level":
+				var item_definition: Dictionary = state.items_by_id.get(str(condition.get("itemId", "")), {})
+				var held_item: Dictionary = state.first_inventory_item_by_item_id(str(condition.get("itemId", "")))
+				var level := int(held_item.get("attunement", {}).get("level", 0)) if not held_item.is_empty() else 0
+				lines.append("- %s attunement %d/%d" % [item_definition.get("name", condition.get("itemId", "")), level, int(condition.get("value", 0))])
+			"soul_name_revealed":
+				lines.append("- Bound soul name revealed")
+	return "\n".join(lines)
 
 func _resonance_effect_summary(resonance: Dictionary) -> String:
 	var parts: Array[String] = []

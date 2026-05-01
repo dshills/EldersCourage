@@ -483,6 +483,9 @@ func handle_escape() -> void:
 	if not ui.get("pendingBargain", {}).is_empty():
 		add_message("Answer the ring's bargain first.", "warning")
 		return
+	if not ui.get("pendingMerge", {}).is_empty():
+		cancel_pending_merge()
+		return
 	if str(inventory_interaction.get("mode", "normal")) == "identify_target":
 		cancel_item_target_mode()
 		return
@@ -622,6 +625,53 @@ func hinted_merge_recipes() -> Array[Dictionary]:
 
 func can_merge_recipe(recipe_id: String) -> bool:
 	return ItemMerging.can_merge(self, item_merges_by_id.get(recipe_id, {}))
+
+func open_merge_panel_for_item(instance_id: String) -> void:
+	var item := inventory_item(instance_id)
+	if item.is_empty():
+		add_message("Select an item to merge.", "warning")
+		return
+	var item_id := str(item.get("itemId", ""))
+	var selected_recipe: Dictionary = {}
+	for recipe in available_merge_recipes():
+		if _merge_recipe_involves_item(recipe, item_id):
+			selected_recipe = recipe
+			break
+	if selected_recipe.is_empty():
+		for recipe in hinted_merge_recipes():
+			if _merge_recipe_involves_item(recipe, item_id):
+				selected_recipe = recipe
+				break
+	if selected_recipe.is_empty():
+		add_message("No merge recipe is stirring around that item.", "warning")
+		return
+	ui["pendingMerge"] = { "recipeId": str(selected_recipe.get("id", "")), "confirm": false }
+	ui["activePanel"] = "inventory"
+	inventory_visible = true
+	state_changed.emit()
+
+func confirm_pending_merge() -> void:
+	var pending: Dictionary = ui.get("pendingMerge", {})
+	if pending.is_empty():
+		return
+	var recipe_id := str(pending.get("recipeId", ""))
+	if not can_merge_recipe(recipe_id):
+		add_message("That merge is not ready.", "warning")
+		return
+	if not bool(pending.get("confirm", false)):
+		pending["confirm"] = true
+		ui["pendingMerge"] = pending
+		add_message("The items answer. Confirm the merge to bind them.", "merge")
+		state_changed.emit()
+		return
+	ui.erase("pendingMerge")
+	merge_recipe(recipe_id)
+
+func cancel_pending_merge() -> void:
+	if not ui.get("pendingMerge", {}).is_empty():
+		ui.erase("pendingMerge")
+		add_message("Merge cancelled.", "info")
+		state_changed.emit()
 
 func resonance_stats() -> Dictionary:
 	return ItemResonance.stat_bonuses(self)
@@ -790,6 +840,8 @@ func skill_effect_amount(skill: Dictionary, effect: Dictionary) -> int:
 		amount += resonance_skill_damage_bonus(str(skill.get("id", "")))
 	elif str(effect.get("type", "")) == "heal":
 		amount += resonance_skill_heal_bonus(str(skill.get("id", "")))
+	elif str(effect.get("type", "")) == "restore_mana":
+		amount += revealed_restore_mana_bonus(str(skill.get("id", "")))
 	return maxi(1, amount) if str(effect.get("type", "")) == "damage" else amount
 
 func effective_skill_cost(skill: Dictionary) -> int:
@@ -854,6 +906,18 @@ func revealed_mana_cost_modifier(skill_id: String) -> int:
 				continue
 			for effect in property.get("effects", []):
 				if str(effect.get("type", "")) == "mana_cost_modifier" and str(effect.get("skillId", "")) == skill_id:
+					total += int(effect.get("amount", 0))
+	return total
+
+func revealed_restore_mana_bonus(skill_id: String) -> int:
+	var total := 0
+	for item in equipped_items():
+		var definition := item_definition(item)
+		for property in definition.get("properties", []):
+			if not _instance_has_revealed_property(item, str(property.get("id", ""))):
+				continue
+			for effect in property.get("effects", []):
+				if str(effect.get("type", "")) == "restore_mana_bonus" and str(effect.get("skillId", "")) == skill_id:
 					total += int(effect.get("amount", 0))
 	return total
 
@@ -1366,6 +1430,12 @@ func _add_resonance_whisper(resonance_def: Dictionary) -> void:
 
 func _resonance_involves_item(resonance_def: Dictionary, item_id: String) -> bool:
 	for required_item_id in resonance_def.get("requiredItemIds", []):
+		if str(required_item_id) == item_id:
+			return true
+	return false
+
+func _merge_recipe_involves_item(recipe: Dictionary, item_id: String) -> bool:
+	for required_item_id in recipe.get("requiredItemIds", []):
 		if str(required_item_id) == item_id:
 			return true
 	return false
