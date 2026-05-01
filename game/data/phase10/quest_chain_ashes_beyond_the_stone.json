@@ -1,0 +1,52 @@
+{
+  "id": "ashes_beyond_the_stone",
+  "title": "Ashes Beyond the Stone",
+  "description": "Beyond the Elder Stone, the ash woods stir with old fire. Find what burns at the heart of the glen and silence it before the road is lost.",
+  "completed": false,
+  "completionReward": { "xp": 75, "gold": 30, "itemId": "cinderheart_remnant" },
+  "stages": [
+    {
+      "id": "phase10_enter_the_glen",
+      "title": "Enter the Glen",
+      "description": "Pass beyond the Elder Stone and get your bearings.",
+      "completed": false,
+      "objectives": [
+        { "id": "phase10_enter_ashwood", "label": "Pass beyond the Elder Stone", "completed": false },
+        { "id": "phase10_visit_ashwood_entry", "label": "Visit Ashwood Entry", "completed": false }
+      ]
+    },
+    {
+      "id": "phase10_read_the_ash",
+      "title": "Read the Ash",
+      "description": "Learn what the glen is doing to the road.",
+      "completed": false,
+      "objectives": [
+        { "id": "phase10_investigate_broken_cairn", "label": "Investigate the Broken Cairn", "completed": false },
+        { "id": "phase10_clear_burning_thorn", "label": "Survive the Burning Thorn", "completed": false },
+        { "id": "phase10_discover_cinder_pool", "label": "Discover the Cinder Pool", "completed": false }
+      ]
+    },
+    {
+      "id": "phase10_clear_the_burned_path",
+      "title": "Clear the Burned Path",
+      "description": "End the threats stalking Ashwood Glen.",
+      "completed": false,
+      "objectives": [
+        { "id": "phase10_defeat_ember_wisp", "label": "Defeat Ember Wisp", "completed": false },
+        { "id": "phase10_defeat_ash_wolf", "label": "Defeat Ash Wolf", "completed": false },
+        { "id": "phase10_defeat_cinder_acolyte", "label": "Defeat Cinder Acolyte", "completed": false }
+      ]
+    },
+    {
+      "id": "phase10_quiet_the_cinderheart",
+      "title": "Quiet the Cinderheart",
+      "description": "Reach the glen's heart and stop what burns there.",
+      "completed": false,
+      "objectives": [
+        { "id": "phase10_reach_cinderheart", "label": "Reach Cinderheart", "completed": false },
+        { "id": "phase10_defeat_cinderheart_guardian", "label": "Defeat Cinderheart Guardian", "completed": false },
+        { "id": "phase10_claim_cinderheart_remnant", "label": "Claim the Cinderheart Remnant", "completed": false }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+[
+  {
+    "id": "burning_thorn_001",
+    "name": "Burning Thorn",
+    "description": "A knot of thorn-vines burns without consuming itself.",
+    "trigger": "on_enter_tile",
+    "repeatable": false,
+    "effects": [
+      { "type": "damage_player", "amount": 6, "nonlethal": true },
+      { "type": "message", "messageType": "hazard", "text": "Burning thorn lashes from the ash and tears at you for {damage} damage." }
+    ],
+    "mitigations": [
+      { "type": "stat_check", "stat": "defense", "value": 4, "reducedAmount": 3 },
+      { "type": "resonance_active", "resonanceId": "coal_remembers_flame", "reducedAmount": 2 },
+      { "type": "item_property_revealed", "itemId": "ashwood_charm", "propertyId": "phase10_ashwood_charm_thornward", "reducedAmount": 2 }
+    ]
+  },
+  {
+    "id": "cinder_pool_001",
+    "name": "Cinder Pool",
+    "description": "A dark pool bubbles with failed fire instead of water.",
+    "trigger": "on_interact",
+    "repeatable": false,
+    "effects": [
+      { "type": "class_resource_loss", "amount": 5, "nonlethal": true },
+      { "type": "message", "messageType": "hazard", "text": "The cinder pool drinks {resource} for {amount}." }
+    ],
+    "mitigations": []
+  }
+]

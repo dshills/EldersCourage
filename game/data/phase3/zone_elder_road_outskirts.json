@@ -26,6 +26,6 @@
     { "id": "tile_road_7", "kind": "road", "name": "Lower Road", "description": "A road of mud and pale grass.", "position": [1, 3], "state": "visible" },
     { "id": "tile_wolf", "kind": "woods", "name": "Wolf Den", "description": "A starved wolf prowls between roots.", "position": [2, 3], "state": "visible", "encounterId": "phase3_starved_wolf" },
     { "id": "tile_road_8", "kind": "road", "name": "Stone Approach", "description": "Flat stones mark the approach.", "position": [3, 3], "state": "visible" },
-    { "id": "tile_elder_stone", "kind": "elder_stone", "name": "Elder Stone", "description": "The old stone hums at the road's end.", "position": [4, 3], "state": "visible" }
+    { "id": "tile_elder_stone", "kind": "elder_stone", "name": "Elder Stone", "description": "The old stone hums at the road's end.", "position": [4, 3], "state": "visible", "transition": { "targetZoneId": "ashwood_glen", "targetPosition": [0, 0], "label": "Enter Ashwood Glen", "message": "You pass beyond the Elder Stone into Ashwood Glen.", "blockedMessage": "The Elder Stone remains cold. The road behind you is not yet secure.", "requires": [{ "type": "quest_stage_complete", "questId": "phase3_the_elder_road", "stageId": "phase3_break_the_ambush" }] } }
   ]
 }

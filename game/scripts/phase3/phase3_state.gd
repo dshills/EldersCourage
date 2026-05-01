@@ -15,9 +15,15 @@ var enemies_by_id := {}
 var loot_tables_by_id := {}
 var containers_by_id := {}
 var shrines_by_id := {}
+var hazards_by_id := {}
 var classes_by_id := {}
 var skills_by_id := {}
 var talent_trees_by_id := {}
+var zones_by_id := {}
+var quest_chains_by_zone_id := {}
+var current_zone_id := "phase3_elder_road_outskirts"
+var unlocked_zone_ids: Array[String] = []
+var zone_states := {}
 var zone := {}
 var quest_chain := {}
 var player := {}
@@ -29,7 +35,9 @@ var inventory_visible := false
 var talent_panel_visible := false
 var ui := { "activePanel": "", "debugMode": false, "selectedTileId": "", "lastAnimation": {} }
 var completed_encounters := {}
+var completed_hazards := {}
 var completion_reward_claimed := false
+var quest_completion_rewards_claimed := {}
 var defeated := false
 var class_selected := false
 var selected_class_id := ""
@@ -54,6 +62,7 @@ func reset() -> void:
 	loot_tables_by_id = _load_records_by_id("res://data/phase3/loot_tables.json")
 	containers_by_id = _load_records_by_id("res://data/phase3/containers.json")
 	shrines_by_id = _load_records_by_id("res://data/phase3/shrines.json")
+	hazards_by_id = _load_records_by_id("res://data/phase10/hazards.json")
 	classes_by_id = _load_records_by_id("res://data/phase4/classes.json")
 	skills_by_id = _load_records_by_id("res://data/phase4/skills.json")
 	talent_trees_by_id = _load_records_by_id("res://data/phase4/talents.json")
@@ -96,8 +105,24 @@ func start_class(class_id: String) -> void:
 	state_changed.emit()
 
 func _reset_world() -> void:
-	zone = _load_record("res://data/phase3/zone_elder_road_outskirts.json")
-	quest_chain = _load_record("res://data/phase3/quest_chain.json")
+	var elder_zone := _load_record("res://data/phase3/zone_elder_road_outskirts.json")
+	var ashwood_zone := _load_record("res://data/phase10/zone_ashwood_glen.json")
+	zones_by_id = {
+		str(elder_zone.get("id", "phase3_elder_road_outskirts")): elder_zone,
+		str(ashwood_zone.get("id", "ashwood_glen")): ashwood_zone,
+	}
+	quest_chains_by_zone_id = {
+		"phase3_elder_road_outskirts": _load_record("res://data/phase3/quest_chain.json"),
+		"ashwood_glen": _load_record("res://data/phase10/quest_chain_ashes_beyond_the_stone.json"),
+	}
+	current_zone_id = "phase3_elder_road_outskirts"
+	unlocked_zone_ids = ["phase3_elder_road_outskirts"]
+	zone_states = {}
+	for zone_id in zones_by_id.keys():
+		var zone_definition: Dictionary = zones_by_id[zone_id]
+		zone_states[zone_id] = _default_zone_state(zone_definition)
+	zone = zones_by_id[current_zone_id]
+	quest_chain = quest_chains_by_zone_id[current_zone_id]
 	player = {
 		"name": "The Wanderer",
 		"level": 1,
@@ -124,13 +149,59 @@ func _reset_world() -> void:
 	inventory_visible = false
 	talent_panel_visible = false
 	ui = { "activePanel": "", "debugMode": false, "selectedTileId": "", "lastAnimation": {} }
-	completed_encounters = {}
+	completed_encounters = get_current_zone_state().get("clearedEncounterIds", {})
+	completed_hazards = get_current_zone_state().get("completedHazardIds", {})
 	completion_reward_claimed = false
+	quest_completion_rewards_claimed = {}
 	defeated = false
 	temporary_modifiers = []
 	inventory_interaction = { "mode": "normal", "sourceItemInstanceId": "" }
 	resonance = ItemResonance.create_state()
 	_mark_current_tile_visited()
+
+func get_current_zone() -> Dictionary:
+	return zones_by_id.get(current_zone_id, zone)
+
+func get_current_zone_state() -> Dictionary:
+	if not zone_states.has(current_zone_id):
+		zone_states[current_zone_id] = _default_zone_state(get_current_zone())
+	return zone_states[current_zone_id]
+
+func get_player_zone_position() -> Dictionary:
+	return get_current_zone_state().get("playerPosition", player.get("position", { "x": 0, "y": 0 }))
+
+func set_player_zone_position(zone_id: String, position: Dictionary) -> void:
+	if not zone_states.has(zone_id):
+		zone_states[zone_id] = _default_zone_state(zones_by_id.get(zone_id, {}))
+	var state: Dictionary = zone_states[zone_id]
+	state["playerPosition"] = position.duplicate(true)
+	zone_states[zone_id] = state
+	if zone_id == current_zone_id:
+		player["position"] = position.duplicate(true)
+
+func is_zone_unlocked(zone_id: String) -> bool:
+	return unlocked_zone_ids.has(zone_id)
+
+func unlock_zone(zone_id: String) -> void:
+	if not unlocked_zone_ids.has(zone_id):
+		unlocked_zone_ids.append(zone_id)
+
+func _default_zone_state(zone_definition: Dictionary) -> Dictionary:
+	return {
+		"playerPosition": _position_from_array(zone_definition.get("startPosition", [0, 0])),
+		"visitedTileIds": {},
+		"clearedEncounterIds": {},
+		"openedContainerIds": {},
+		"activatedShrineIds": {},
+		"completedHazardIds": {},
+	}
+
+func _sync_current_zone_aliases() -> void:
+	zone = zones_by_id.get(current_zone_id, {})
+	quest_chain = quest_chains_by_zone_id.get(current_zone_id, {})
+	completed_encounters = get_current_zone_state().get("clearedEncounterIds", {})
+	completed_hazards = get_current_zone_state().get("completedHazardIds", {})
+	player["position"] = get_player_zone_position()
 
 func move_player(direction: String) -> void:
 	if not class_selected:
@@ -159,7 +230,7 @@ func move_player(direction: String) -> void:
 		_set_ui_animation("invalid", "messages")
 		add_message("You cannot travel that way.", "warning")
 		return
-	player["position"] = target
+	set_player_zone_position(current_zone_id, target)
 	_mark_current_tile_visited()
 	_set_ui_animation("movement", "map")
 	add_message("You travel %s to %s." % [direction, tile.get("name", "the road")], "info")
@@ -183,11 +254,12 @@ func open_container(container_id: String) -> void:
 	if container.is_empty():
 		add_message("There is no such container.", "warning")
 		return
-	if bool(container.get("opened", false)):
+	if bool(container.get("opened", false)) or get_current_zone_state().get("openedContainerIds", {}).has(container_id):
 		add_message("%s is already open." % container.get("name", "The container"), "warning")
 		return
 	container["opened"] = true
 	containers_by_id[container_id] = container
+	get_current_zone_state().get("openedContainerIds", {})[container_id] = true
 	add_message("You open %s." % container.get("name", "the container"), "loot")
 	grant_loot(str(container.get("lootTableId", "")))
 	if container_id == "phase3_abandoned_chest":
@@ -209,11 +281,12 @@ func activate_shrine(shrine_id: String) -> void:
 	if shrine.is_empty():
 		add_message("There is no such shrine.", "warning")
 		return
-	if bool(shrine.get("activated", false)):
+	if bool(shrine.get("activated", false)) or get_current_zone_state().get("activatedShrineIds", {}).has(shrine_id):
 		add_message("%s is already quiet." % shrine.get("name", "The shrine"), "warning")
 		return
 	shrine["activated"] = true
 	shrines_by_id[shrine_id] = shrine
+	get_current_zone_state().get("activatedShrineIds", {})[shrine_id] = true
 	player["health"] = mini(effective_max_health(), int(player["health"]) + int(shrine.get("restoreHealth", 0)))
 	player["mana"] = mini(effective_max_mana(), int(player["mana"]) + int(shrine.get("restoreMana", 0)))
 	if shrine.has("grantItemId"):
@@ -476,6 +549,56 @@ func push_ui_animation(event_type: String, target_id: String = "") -> void:
 	_set_ui_animation(event_type, target_id)
 	state_changed.emit()
 
+func can_transition_from_current_tile() -> Dictionary:
+	var tile := current_tile()
+	var transition: Dictionary = tile.get("transition", {})
+	if transition.is_empty():
+		return { "available": false, "enabled": false, "label": "Travel", "reason": "No zone transition here." }
+	var target_zone_id := str(transition.get("targetZoneId", ""))
+	var label := str(transition.get("label", "Travel"))
+	if target_zone_id == "" or not zones_by_id.has(target_zone_id):
+		return { "available": true, "enabled": false, "label": label, "reason": "The path does not lead anywhere stable." }
+	for requirement in transition.get("requires", []):
+		var blocked_reason := _transition_requirement_blocked_reason(requirement)
+		if blocked_reason != "":
+			return { "available": true, "enabled": false, "label": label, "reason": blocked_reason }
+	return { "available": true, "enabled": true, "label": label, "reason": "" }
+
+func transition_from_current_tile() -> void:
+	var tile := current_tile()
+	var transition: Dictionary = tile.get("transition", {})
+	var availability := can_transition_from_current_tile()
+	if not bool(availability.get("available", false)):
+		add_message("There is nowhere to travel from here.", "warning")
+		return
+	if not bool(availability.get("enabled", false)):
+		add_message(str(transition.get("blockedMessage", availability.get("reason", "The path is blocked."))), "warning")
+		return
+	var target_zone_id := str(transition.get("targetZoneId", ""))
+	var target_position := _position_from_array(transition.get("targetPosition", zones_by_id.get(target_zone_id, {}).get("startPosition", [0, 0])))
+	transition_to_zone(target_zone_id, target_position, str(transition.get("message", "")))
+
+func transition_to_zone(target_zone_id: String, target_position: Dictionary, message: String = "") -> void:
+	if not zones_by_id.has(target_zone_id):
+		add_message("That path is not ready.", "warning")
+		return
+	set_player_zone_position(current_zone_id, player.get("position", { "x": 0, "y": 0 }))
+	unlock_zone(target_zone_id)
+	current_zone_id = target_zone_id
+	_sync_current_zone_aliases()
+	set_player_zone_position(target_zone_id, target_position)
+	active_enemy = {}
+	_mark_current_tile_visited()
+	if target_zone_id == "ashwood_glen":
+		complete_objective("phase10_enter_ashwood", "ashes_beyond_the_stone")
+		complete_objective("phase10_visit_ashwood_entry", "ashes_beyond_the_stone")
+		_add_varn_zone_whisper("Ashwood. Hm. Someone here misunderstood fire with great confidence.")
+	if message == "":
+		message = "You travel to %s." % zone.get("name", target_zone_id)
+	add_message(message, "transition")
+	_set_ui_animation("quest", "map")
+	state_changed.emit()
+
 func _set_ui_animation(event_type: String, target_id: String = "") -> void:
 	ui["lastAnimation"] = { "id": "ui_%d" % Time.get_ticks_msec(), "type": event_type, "targetId": target_id, "createdAt": Time.get_ticks_msec() }
 
@@ -534,9 +657,16 @@ func add_item(item_id: String, quantity: int) -> void:
 			add_message("Found %s." % display_name(item), "loot")
 	player["inventory"] = inventory
 
-func complete_objective(objective_id: String) -> void:
+func complete_objective(objective_id: String, quest_id: String = "") -> void:
+	var target_chain := quest_chain
+	if quest_id != "":
+		for chain_zone_id in quest_chains_by_zone_id.keys():
+			var candidate: Dictionary = quest_chains_by_zone_id[chain_zone_id]
+			if str(candidate.get("id", "")) == quest_id:
+				target_chain = candidate
+				break
 	var changed_stage := ""
-	for stage in quest_chain.get("stages", []):
+	for stage in target_chain.get("stages", []):
 		for objective in stage.get("objectives", []):
 			if str(objective.get("id", "")) == objective_id and not bool(objective.get("completed", false)):
 				objective["completed"] = true
@@ -988,6 +1118,7 @@ func _defeat_active_enemy() -> void:
 	active_enemy["defeated"] = true
 	var enemy_id := str(active_enemy.get("id", ""))
 	completed_encounters[enemy_id] = true
+	get_current_zone_state().get("clearedEncounterIds", {})[enemy_id] = true
 	add_message("%s is defeated." % active_enemy.get("name", "Enemy"), "combat")
 	_process_ring_whisper_for_equipped("on_enemy_defeated", { "enemyId": enemy_id })
 	process_resonance_trigger("enemy_defeated", { "enemyId": enemy_id })
@@ -1029,21 +1160,29 @@ func _check_zone_completion() -> void:
 	if complete and not bool(quest_chain.get("completed", false)):
 		quest_chain["completed"] = true
 		zone["completed"] = true
-		if not completion_reward_claimed:
-			completion_reward_claimed = true
+		var quest_id := str(quest_chain.get("id", current_zone_id))
+		if not bool(quest_completion_rewards_claimed.get(quest_id, false)):
+			quest_completion_rewards_claimed[quest_id] = true
+			completion_reward_claimed = quest_id == "phase3_the_elder_road"
 			var reward: Dictionary = quest_chain.get("completionReward", {})
 			_award_xp(int(reward.get("xp", 0)))
 			player["gold"] = int(player["gold"]) + int(reward.get("gold", 0))
-			match selected_class_id:
-				"roadwarden":
-					add_item("phase5_roadwardens_notched_blade", 1)
-				"ember_sage":
-					add_item("phase5_ashen_ring", 1)
-				"gravebound_scout":
-					add_item("phase5_whisperthread_cloak", 1)
-				_:
-					add_item("phase5_ashen_ring", 1)
-			add_message("The Elder Road is secure.", "success")
+			if reward.has("itemId"):
+				add_item(str(reward.get("itemId", "")), 1)
+			if quest_id == "phase3_the_elder_road":
+				match selected_class_id:
+					"roadwarden":
+						add_item("phase5_roadwardens_notched_blade", 1)
+					"ember_sage":
+						add_item("phase5_ashen_ring", 1)
+					"gravebound_scout":
+						add_item("phase5_whisperthread_cloak", 1)
+					_:
+						add_item("phase5_ashen_ring", 1)
+				add_message("The Elder Road is secure.", "success")
+			elif quest_id == "ashes_beyond_the_stone":
+				complete_objective("phase10_claim_cinderheart_remnant", quest_id)
+				add_message("The Cinderheart dims. Ashwood Glen grows still, but not peaceful.", "success")
 
 func _objectives_complete(objectives: Array) -> bool:
 	if objectives.is_empty():
@@ -1053,12 +1192,34 @@ func _objectives_complete(objectives: Array) -> bool:
 			return false
 	return true
 
+func _quest_stage_complete(quest_id: String, stage_id: String) -> bool:
+	for chain in quest_chains_by_zone_id.values():
+		if str(chain.get("id", "")) != quest_id:
+			continue
+		for stage in chain.get("stages", []):
+			if str(stage.get("id", "")) == stage_id:
+				return bool(stage.get("completed", false))
+	return false
+
+func _transition_requirement_blocked_reason(requirement) -> String:
+	if typeof(requirement) != TYPE_DICTIONARY:
+		return "The path is blocked."
+	var requirement_dict: Dictionary = requirement
+	match str(requirement_dict.get("type", "")):
+		"quest_stage_complete":
+			if not _quest_stage_complete(str(requirement_dict.get("questId", "")), str(requirement_dict.get("stageId", ""))):
+				return "The road behind you is not yet secure."
+		_:
+			return "The path is blocked."
+	return ""
+
 func _mark_current_tile_visited() -> void:
 	var position: Dictionary = player.get("position", { "x": 0, "y": 0 })
 	for tile in zone.get("tiles", []):
 		var tile_position := _position_from_array(tile.get("position", [0, 0]))
 		if int(tile_position["x"]) == int(position["x"]) and int(tile_position["y"]) == int(position["y"]):
 			tile["state"] = "visited"
+			get_current_zone_state().get("visitedTileIds", {})[str(tile.get("id", ""))] = true
 
 func _decrement_inventory_item(instance_id: String) -> void:
 	var inventory: Array = player.get("inventory", [])
@@ -1433,6 +1594,14 @@ func _resonance_involves_item(resonance_def: Dictionary, item_id: String) -> boo
 		if str(required_item_id) == item_id:
 			return true
 	return false
+
+func _add_varn_zone_whisper(line: String) -> void:
+	if line == "":
+		return
+	for item in equipped_items():
+		if RingSouls.soul_id(item) == "varn_ashen_orator" and RingSouls.reveal_stage(item) >= 2:
+			add_message("Varn whispers: \"%s\"" % line, "ring_whisper")
+			return
 
 func _merge_recipe_involves_item(recipe: Dictionary, item_id: String) -> bool:
 	for required_item_id in recipe.get("requiredItemIds", []):
