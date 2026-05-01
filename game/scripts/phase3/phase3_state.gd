@@ -239,6 +239,8 @@ func move_player(direction: String) -> void:
 		start_encounter(str(tile["encounterId"]))
 	if str(tile.get("kind", "")) == "elder_stone":
 		complete_objective("phase3_reach_elder_stone")
+	if tile.has("objectiveId") and str(tile.get("kind", "")) != "cairn":
+		complete_objective(str(tile.get("objectiveId", "")), str(quest_chain.get("id", "")))
 	_check_zone_completion()
 	state_changed.emit()
 
