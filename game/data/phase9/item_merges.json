@@ -1,0 +1,19 @@
+[
+  {
+    "id": "staff_of_the_ashen_orator_merge",
+    "name": "Staff of the Ashen Orator",
+    "requiredItemIds": ["phase5_ashen_ring", "phase4_ember_staff"],
+    "requiredConditions": [
+      { "type": "resonance_discovered", "resonanceId": "coal_remembers_flame" },
+      { "type": "attunement_level", "itemId": "phase5_ashen_ring", "value": 2 },
+      { "type": "soul_name_revealed", "soulId": "varn_ashen_orator" }
+    ],
+    "consumesItems": true,
+    "resultItemId": "phase9_staff_of_the_ashen_orator",
+    "risk": "curse_carryover",
+    "visibility": "hinted",
+    "startMessage": "Ash circles the Ember Staff. The ring begins to speak in sparks.",
+    "completeMessage": "Merge complete: Staff of the Ashen Orator has awakened.",
+    "whisper": "Ah. At last, a proper throat for fire."
+  }
+]

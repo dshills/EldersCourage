@@ -195,6 +195,9 @@ func validateDocument(path string, value any, seenIDs map[string]string) error {
 	if strings.Contains(cleanPath, "/phase9/item_resonances.json") {
 		return validatePhase9ResonanceDocument(path, value)
 	}
+	if strings.Contains(cleanPath, "/phase9/item_merges.json") {
+		return validatePhase9MergeDocument(path, value)
+	}
 	if strings.Contains(cleanPath, "/items/") {
 		return validateItemDocument(path, value)
 	}
@@ -568,7 +571,7 @@ func validatePhase5Property(path string, item map[string]any, property map[strin
 			return fmt.Errorf("%s: phase5 property %q effect must be object", path, propertyID)
 		}
 		effectType, ok := effect["type"].(string)
-		if !ok || !validString(effectType, []string{"stat_bonus", "stat_penalty", "damage_bonus", "damage_penalty", "mana_cost_modifier", "health_cost", "xp_modifier", "gold_modifier"}) {
+		if !ok || !validString(effectType, []string{"stat_bonus", "stat_penalty", "damage_bonus", "damage_penalty", "mana_cost_modifier", "restore_mana_bonus", "health_cost", "xp_modifier", "gold_modifier"}) {
 			return fmt.Errorf("%s: phase5 property %q has invalid effect type %q", path, propertyID, effect["type"])
 		}
 		if _, ok := effect["amount"].(float64); !ok {
@@ -580,7 +583,7 @@ func validatePhase5Property(path string, item map[string]any, property map[strin
 				return fmt.Errorf("%s: phase5 property %q stat effect requires valid stat", path, propertyID)
 			}
 		}
-		if effectType == "damage_bonus" || effectType == "damage_penalty" || effectType == "mana_cost_modifier" {
+		if effectType == "damage_bonus" || effectType == "damage_penalty" || effectType == "mana_cost_modifier" || effectType == "restore_mana_bonus" {
 			if raw, ok := effect["skillId"].(string); !ok || strings.TrimSpace(raw) == "" {
 				return fmt.Errorf("%s: phase5 property %q effect requires skillId", path, propertyID)
 			}
@@ -906,6 +909,55 @@ func validatePhase9ResonanceEffect(path string, resonanceID string, effect map[s
 	case "curse_health_cost":
 		if nonlethal, ok := effect["nonlethal"].(bool); !ok || !nonlethal {
 			return fmt.Errorf("%s: phase9 resonance %q health cost must be nonlethal", path, resonanceID)
+		}
+	}
+	return nil
+}
+
+func validatePhase9MergeDocument(path string, value any) error {
+	for _, recipe := range records(value) {
+		for _, field := range []string{"id", "name", "resultItemId", "risk", "visibility", "startMessage", "completeMessage"} {
+			if raw, ok := recipe[field].(string); !ok || strings.TrimSpace(raw) == "" {
+				return fmt.Errorf("%s: phase9 merge missing string field %q", path, field)
+			}
+		}
+		recipeID := recipe["id"].(string)
+		if !validString(recipe["visibility"].(string), []string{"visible", "hinted", "hidden", "discovered"}) {
+			return fmt.Errorf("%s: phase9 merge %q has invalid visibility %q", path, recipeID, recipe["visibility"])
+		}
+		if _, ok := recipe["consumesItems"].(bool); !ok {
+			return fmt.Errorf("%s: phase9 merge %q consumesItems must be boolean", path, recipeID)
+		}
+		requiredItems, ok := recipe["requiredItemIds"].([]any)
+		if !ok || len(requiredItems) < 2 {
+			return fmt.Errorf("%s: phase9 merge %q requires at least two requiredItemIds", path, recipeID)
+		}
+		for _, rawItemID := range requiredItems {
+			if itemID, ok := rawItemID.(string); !ok || strings.TrimSpace(itemID) == "" {
+				return fmt.Errorf("%s: phase9 merge %q has invalid required item", path, recipeID)
+			}
+		}
+		conditions, ok := recipe["requiredConditions"].([]any)
+		if !ok || len(conditions) == 0 {
+			return fmt.Errorf("%s: phase9 merge %q requires requiredConditions", path, recipeID)
+		}
+		for _, rawCondition := range conditions {
+			condition, ok := rawCondition.(map[string]any)
+			if !ok {
+				return fmt.Errorf("%s: phase9 merge %q condition must be object", path, recipeID)
+			}
+			conditionType, ok := condition["type"].(string)
+			if !ok || !validString(conditionType, []string{"resonance_discovered", "attunement_level", "soul_name_revealed"}) {
+				return fmt.Errorf("%s: phase9 merge %q has invalid condition type %q", path, recipeID, condition["type"])
+			}
+			if conditionType == "attunement_level" {
+				if value, ok := condition["value"].(float64); !ok || value <= 0 {
+					return fmt.Errorf("%s: phase9 merge %q attunement condition requires positive value", path, recipeID)
+				}
+				if raw, ok := condition["itemId"].(string); !ok || strings.TrimSpace(raw) == "" {
+					return fmt.Errorf("%s: phase9 merge %q attunement condition requires itemId", path, recipeID)
+				}
+			}
 		}
 	}
 	return nil
@@ -1777,38 +1829,75 @@ func validatePhase8References(path string, value any, seenIDs map[string]string)
 
 func validatePhase9References(path string, value any, seenIDs map[string]string) error {
 	cleanPath := filepath.ToSlash(path)
-	if !strings.Contains(cleanPath, "/phase9/item_resonances.json") {
-		return nil
-	}
-	for _, resonance := range records(value) {
-		for _, rawItemID := range asArray(resonance["requiredItemIds"]) {
-			itemID, ok := rawItemID.(string)
-			if !ok || strings.TrimSpace(itemID) == "" {
-				return fmt.Errorf("%s: phase9 resonance %q has invalid item reference", path, resonance["id"])
+	if strings.Contains(cleanPath, "/phase9/item_resonances.json") {
+		for _, resonance := range records(value) {
+			for _, rawItemID := range asArray(resonance["requiredItemIds"]) {
+				itemID, ok := rawItemID.(string)
+				if !ok || strings.TrimSpace(itemID) == "" {
+					return fmt.Errorf("%s: phase9 resonance %q has invalid item reference", path, resonance["id"])
+				}
+				if _, exists := seenIDs[itemID]; !exists {
+					return fmt.Errorf("%s: phase9 resonance %q references unknown item %q", path, resonance["id"], itemID)
+				}
 			}
-			if _, exists := seenIDs[itemID]; !exists {
-				return fmt.Errorf("%s: phase9 resonance %q references unknown item %q", path, resonance["id"], itemID)
+			for _, rawRequirement := range asArray(resonance["discoveryRequirements"]) {
+				requirement, ok := rawRequirement.(map[string]any)
+				if !ok {
+					continue
+				}
+				if skillID, ok := requirement["skillId"].(string); ok && skillID != "" {
+					if _, exists := seenIDs[skillID]; !exists {
+						return fmt.Errorf("%s: phase9 resonance %q references unknown skill %q", path, resonance["id"], skillID)
+					}
+				}
 			}
-		}
-		for _, rawRequirement := range asArray(resonance["discoveryRequirements"]) {
-			requirement, ok := rawRequirement.(map[string]any)
-			if !ok {
-				continue
-			}
-			if skillID, ok := requirement["skillId"].(string); ok && skillID != "" {
-				if _, exists := seenIDs[skillID]; !exists {
-					return fmt.Errorf("%s: phase9 resonance %q references unknown skill %q", path, resonance["id"], skillID)
+			for _, rawEffect := range asArray(resonance["effects"]) {
+				effect, ok := rawEffect.(map[string]any)
+				if !ok {
+					continue
+				}
+				if skillID, ok := effect["skillId"].(string); ok && skillID != "" {
+					if _, exists := seenIDs[skillID]; !exists {
+						return fmt.Errorf("%s: phase9 resonance %q references unknown skill %q", path, resonance["id"], skillID)
+					}
 				}
 			}
 		}
-		for _, rawEffect := range asArray(resonance["effects"]) {
-			effect, ok := rawEffect.(map[string]any)
-			if !ok {
-				continue
+	}
+	if strings.Contains(cleanPath, "/phase9/item_merges.json") {
+		for _, recipe := range records(value) {
+			for _, rawItemID := range asArray(recipe["requiredItemIds"]) {
+				itemID, ok := rawItemID.(string)
+				if !ok || strings.TrimSpace(itemID) == "" {
+					return fmt.Errorf("%s: phase9 merge %q has invalid item reference", path, recipe["id"])
+				}
+				if _, exists := seenIDs[itemID]; !exists {
+					return fmt.Errorf("%s: phase9 merge %q references unknown item %q", path, recipe["id"], itemID)
+				}
 			}
-			if skillID, ok := effect["skillId"].(string); ok && skillID != "" {
-				if _, exists := seenIDs[skillID]; !exists {
-					return fmt.Errorf("%s: phase9 resonance %q references unknown skill %q", path, resonance["id"], skillID)
+			resultItemID, _ := recipe["resultItemId"].(string)
+			if _, exists := seenIDs[resultItemID]; !exists {
+				return fmt.Errorf("%s: phase9 merge %q references unknown result item %q", path, recipe["id"], resultItemID)
+			}
+			for _, rawCondition := range asArray(recipe["requiredConditions"]) {
+				condition, ok := rawCondition.(map[string]any)
+				if !ok {
+					continue
+				}
+				if resonanceID, ok := condition["resonanceId"].(string); ok && resonanceID != "" {
+					if _, exists := seenIDs[resonanceID]; !exists {
+						return fmt.Errorf("%s: phase9 merge %q references unknown resonance %q", path, recipe["id"], resonanceID)
+					}
+				}
+				if itemID, ok := condition["itemId"].(string); ok && itemID != "" {
+					if _, exists := seenIDs[itemID]; !exists {
+						return fmt.Errorf("%s: phase9 merge %q references unknown condition item %q", path, recipe["id"], itemID)
+					}
+				}
+				if soulID, ok := condition["soulId"].(string); ok && soulID != "" {
+					if _, exists := seenIDs[soulID]; !exists {
+						return fmt.Errorf("%s: phase9 merge %q references unknown soul %q", path, recipe["id"], soulID)
+					}
 				}
 			}
 		}

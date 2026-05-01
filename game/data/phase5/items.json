@@ -198,5 +198,56 @@
         "effects": [{ "type": "stat_bonus", "stat": "spellPower", "amount": 1 }]
       }
     ]
+  },
+  {
+    "id": "phase9_staff_of_the_ashen_orator",
+    "name": "Staff of the Ashen Orator",
+    "type": "weapon",
+    "description": "A staff threaded with black-gold ash. Varn's voice moves through it more easily now. That is not necessarily comforting.",
+    "icon": "res://assets/items/fire_rune.png",
+    "quantity": 1,
+    "stackable": false,
+    "equippable": true,
+    "equipmentSlot": "weapon",
+    "stats": { "spellPower": 4, "maxManaBonus": 10 },
+    "defaultKnowledgeState": "identified",
+    "attunable": true,
+    "maxAttunementLevel": 4,
+    "soulId": "varn_ashen_orator",
+    "properties": [
+      {
+        "id": "phase9_staff_orators_flame",
+        "name": "Orator's Flame",
+        "description": "Ember Bolt deals +4 damage.",
+        "kind": "skill_modifier",
+        "visibility": "visible",
+        "revealed": true,
+        "cursed": false,
+        "requirements": [],
+        "effects": [{ "type": "damage_bonus", "skillId": "ember_bolt", "amount": 4 }]
+      },
+      {
+        "id": "phase9_staff_borrowed_breath",
+        "name": "Borrowed Breath",
+        "description": "Kindle restores +5 additional mana.",
+        "kind": "skill_modifier",
+        "visibility": "locked_by_attunement",
+        "revealed": false,
+        "cursed": false,
+        "requirements": [{ "type": "attunement", "value": 1 }],
+        "effects": [{ "type": "restore_mana_bonus", "skillId": "kindle", "amount": 5 }]
+      },
+      {
+        "id": "phase9_staff_blood_price_carried",
+        "name": "Blood Price Carried",
+        "description": "Lose 2 health whenever you use a skill.",
+        "kind": "curse",
+        "visibility": "hidden",
+        "revealed": false,
+        "cursed": true,
+        "requirements": [{ "type": "combat_use" }],
+        "effects": [{ "type": "health_cost", "amount": 2 }]
+      }
+    ]
   }
 ]
