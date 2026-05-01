@@ -1,0 +1,112 @@
+[
+  {
+    "id": "varn_ashen_orator",
+    "name": "Varn",
+    "epithet": "The Ashen Orator",
+    "discipline": "Ember rhetoric and binding flame",
+    "motivation": "To feel living breath again, even borrowed.",
+    "personalityTags": ["eloquent", "vain", "hungry", "persuasive", "wounded"],
+    "trustRange": { "min": -3, "max": 3 },
+    "whispers": [
+      {
+        "id": "varn_equip_first",
+        "trigger": "on_equip",
+        "line": "Ah. A hand with warmth enough to matter.",
+        "once": true
+      },
+      {
+        "id": "varn_skill_ember",
+        "trigger": "on_skill_use",
+        "line": "Spend breath. Make flame. That is the oldest bargain.",
+        "cooldownTurns": 2,
+        "skillIds": ["ember_bolt"]
+      },
+      {
+        "id": "varn_skill_any",
+        "trigger": "on_skill_use",
+        "line": "Power answers when called properly.",
+        "cooldownTurns": 3
+      },
+      {
+        "id": "varn_enemy_defeated",
+        "trigger": "on_enemy_defeated",
+        "line": "Ash remembers every shape it used to be.",
+        "cooldownTurns": 2
+      },
+      {
+        "id": "varn_attunement",
+        "trigger": "on_attunement_level_up",
+        "line": "Yes. Listen closer. I was not always a ring.",
+        "once": true
+      },
+      {
+        "id": "varn_curse_trigger",
+        "trigger": "on_curse_trigger",
+        "line": "A little blood keeps the ember honest.",
+        "once": true
+      },
+      {
+        "id": "varn_low_trust",
+        "trigger": "on_skill_use",
+        "line": "Clumsy. Suspicious. Still useful.",
+        "cooldownTurns": 3,
+        "maxTrust": -1
+      },
+      {
+        "id": "varn_bargain_offered",
+        "trigger": "on_bargain_offered",
+        "line": "Five heartbeats of warmth, and I will teach your flame to bite.",
+        "once": true
+      },
+      {
+        "id": "varn_bargain_accepted",
+        "trigger": "on_bargain_accepted",
+        "line": "There. You feel it too, do you not? The shape of hunger.",
+        "once": true
+      },
+      {
+        "id": "varn_bargain_rejected",
+        "trigger": "on_bargain_rejected",
+        "line": "Mercy for yourself. How provincial.",
+        "once": true
+      }
+    ],
+    "memories": [
+      {
+        "id": "varn_hall_of_cinders",
+        "title": "Hall of Cinders",
+        "reveal": { "type": "attunement", "level": 1 },
+        "text": "A vaulted hall burns without smoke. Varn speaks to kneeling figures, promising courage where only terror remains."
+      },
+      {
+        "id": "varn_failed_binding",
+        "title": "Failed Binding",
+        "reveal": { "type": "attunement", "level": 2 },
+        "text": "The binding circle cracks. Varn laughs, then screams, as flame folds inward and turns his oath into a prison."
+      },
+      {
+        "id": "varn_last_breath",
+        "title": "Last Breath",
+        "reveal": { "type": "attunement_or_bargain", "level": 3, "bargainId": "breath_for_flame" },
+        "text": "A final breath crosses the ring's black metal. It is not Varn's breath. It is the first he stole."
+      }
+    ],
+    "bargains": [
+      {
+        "id": "breath_for_flame",
+        "name": "Breath for Flame",
+        "trigger": { "type": "attunement", "level": 2 },
+        "offerLine": "Lend me five heartbeats of warmth. I will make your ember remember teeth.",
+        "acceptMessage": "Varn drinks the offered warmth. Ember Bolt burns hotter.",
+        "rejectMessage": "Varn withdraws into the ring's blackened seam.",
+        "healthCost": { "amount": 5, "nonlethal": true },
+        "trustOnAccept": 1,
+        "trustOnReject": -1,
+        "revealMemoryIds": ["varn_last_breath"],
+        "effects": [
+          { "type": "damage_bonus", "skillId": "ember_bolt", "amount": 2 }
+        ]
+      }
+    ]
+  }
+]

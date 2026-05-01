@@ -189,6 +189,9 @@ func validateDocument(path string, value any, seenIDs map[string]string) error {
 	if strings.Contains(cleanPath, "/phase5/items.json") {
 		return validatePhase5ItemDocument(path, value)
 	}
+	if strings.Contains(cleanPath, "/phase8/ring_souls.json") {
+		return validatePhase8RingSoulDocument(path, value)
+	}
 	if strings.Contains(cleanPath, "/items/") {
 		return validateItemDocument(path, value)
 	}
@@ -581,6 +584,219 @@ func validatePhase5Property(path string, item map[string]any, property map[strin
 		}
 		if revealed && visibility != "visible" {
 			return fmt.Errorf("%s: phase5 property %q starts revealed but is not visible", path, propertyID)
+		}
+	}
+	return nil
+}
+
+func validatePhase8RingSoulDocument(path string, value any) error {
+	seenWhispers := map[string]bool{}
+	seenMemories := map[string]bool{}
+	seenBargains := map[string]bool{}
+	for _, soul := range records(value) {
+		for _, field := range []string{"id", "name", "epithet", "discipline", "motivation"} {
+			if raw, ok := soul[field].(string); !ok || strings.TrimSpace(raw) == "" {
+				return fmt.Errorf("%s: phase8 ring soul missing string field %q", path, field)
+			}
+		}
+		tags, ok := soul["personalityTags"].([]any)
+		if !ok || len(tags) == 0 {
+			return fmt.Errorf("%s: phase8 ring soul %q requires personalityTags", path, soul["id"])
+		}
+		for _, rawTag := range tags {
+			if tag, ok := rawTag.(string); !ok || strings.TrimSpace(tag) == "" {
+				return fmt.Errorf("%s: phase8 ring soul %q has invalid personality tag", path, soul["id"])
+			}
+		}
+		trustRange, ok := soul["trustRange"].(map[string]any)
+		if !ok {
+			return fmt.Errorf("%s: phase8 ring soul %q requires trustRange", path, soul["id"])
+		}
+		minTrust, minOK := trustRange["min"].(float64)
+		maxTrust, maxOK := trustRange["max"].(float64)
+		if !minOK || !maxOK || minTrust > maxTrust || minTrust < -3 || maxTrust > 3 {
+			return fmt.Errorf("%s: phase8 ring soul %q trustRange must stay within -3..3", path, soul["id"])
+		}
+		if err := validatePhase8Whispers(path, soul, seenWhispers); err != nil {
+			return err
+		}
+		memoryIDs, err := validatePhase8Memories(path, soul, seenMemories)
+		if err != nil {
+			return err
+		}
+		if err := validatePhase8Bargains(path, soul, seenBargains, memoryIDs); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validatePhase8Whispers(path string, soul map[string]any, seenWhispers map[string]bool) error {
+	whispers, ok := soul["whispers"].([]any)
+	if !ok || len(whispers) == 0 {
+		return fmt.Errorf("%s: phase8 ring soul %q requires whispers", path, soul["id"])
+	}
+	for _, rawWhisper := range whispers {
+		whisper, ok := rawWhisper.(map[string]any)
+		if !ok {
+			return fmt.Errorf("%s: phase8 ring soul %q whisper must be object", path, soul["id"])
+		}
+		for _, field := range []string{"id", "trigger", "line"} {
+			if raw, ok := whisper[field].(string); !ok || strings.TrimSpace(raw) == "" {
+				return fmt.Errorf("%s: phase8 whisper missing string field %q", path, field)
+			}
+		}
+		whisperID := whisper["id"].(string)
+		if seenWhispers[whisperID] {
+			return fmt.Errorf("%s: duplicate phase8 whisper id %q", path, whisperID)
+		}
+		seenWhispers[whisperID] = true
+		trigger := whisper["trigger"].(string)
+		if !validString(trigger, []string{"on_equip", "on_skill_use", "on_enemy_defeated", "on_attunement_level_up", "on_curse_trigger", "on_bargain_offered", "on_bargain_accepted", "on_bargain_rejected"}) {
+			return fmt.Errorf("%s: phase8 whisper %q has invalid trigger %q", path, whisperID, trigger)
+		}
+		if once, ok := whisper["once"]; ok {
+			if _, ok := once.(bool); !ok {
+				return fmt.Errorf("%s: phase8 whisper %q once must be boolean", path, whisperID)
+			}
+		}
+		if cooldown, ok := whisper["cooldownTurns"]; ok {
+			if value, ok := cooldown.(float64); !ok || value < 0 {
+				return fmt.Errorf("%s: phase8 whisper %q cooldownTurns must be non-negative numeric", path, whisperID)
+			}
+		}
+		for _, field := range []string{"minTrust", "maxTrust"} {
+			if raw, ok := whisper[field]; ok {
+				if value, ok := raw.(float64); !ok || value < -3 || value > 3 {
+					return fmt.Errorf("%s: phase8 whisper %q %s must stay within -3..3", path, whisperID, field)
+				}
+			}
+		}
+		for _, rawSkillID := range asArray(whisper["skillIds"]) {
+			if skillID, ok := rawSkillID.(string); !ok || strings.TrimSpace(skillID) == "" {
+				return fmt.Errorf("%s: phase8 whisper %q has invalid skillIds entry", path, whisperID)
+			}
+		}
+	}
+	return nil
+}
+
+func validatePhase8Memories(path string, soul map[string]any, seenMemories map[string]bool) (map[string]bool, error) {
+	memories, ok := soul["memories"].([]any)
+	if !ok || len(memories) == 0 {
+		return nil, fmt.Errorf("%s: phase8 ring soul %q requires memories", path, soul["id"])
+	}
+	memoryIDs := map[string]bool{}
+	for _, rawMemory := range memories {
+		memory, ok := rawMemory.(map[string]any)
+		if !ok {
+			return nil, fmt.Errorf("%s: phase8 ring soul %q memory must be object", path, soul["id"])
+		}
+		for _, field := range []string{"id", "title", "text"} {
+			if raw, ok := memory[field].(string); !ok || strings.TrimSpace(raw) == "" {
+				return nil, fmt.Errorf("%s: phase8 memory missing string field %q", path, field)
+			}
+		}
+		memoryID := memory["id"].(string)
+		if seenMemories[memoryID] {
+			return nil, fmt.Errorf("%s: duplicate phase8 memory id %q", path, memoryID)
+		}
+		seenMemories[memoryID] = true
+		memoryIDs[memoryID] = true
+		reveal, ok := memory["reveal"].(map[string]any)
+		if !ok {
+			return nil, fmt.Errorf("%s: phase8 memory %q requires reveal", path, memoryID)
+		}
+		revealType, ok := reveal["type"].(string)
+		if !ok || !validString(revealType, []string{"attunement", "attunement_or_bargain"}) {
+			return nil, fmt.Errorf("%s: phase8 memory %q has invalid reveal type %q", path, memoryID, reveal["type"])
+		}
+		if level, ok := reveal["level"].(float64); !ok || level <= 0 || level > 3 {
+			return nil, fmt.Errorf("%s: phase8 memory %q reveal level must be 1..3", path, memoryID)
+		}
+		if revealType == "attunement_or_bargain" {
+			if bargainID, ok := reveal["bargainId"].(string); !ok || strings.TrimSpace(bargainID) == "" {
+				return nil, fmt.Errorf("%s: phase8 memory %q requires bargainId", path, memoryID)
+			}
+		}
+	}
+	return memoryIDs, nil
+}
+
+func validatePhase8Bargains(path string, soul map[string]any, seenBargains map[string]bool, memoryIDs map[string]bool) error {
+	bargains, ok := soul["bargains"].([]any)
+	if !ok || len(bargains) == 0 {
+		return fmt.Errorf("%s: phase8 ring soul %q requires bargains", path, soul["id"])
+	}
+	for _, rawBargain := range bargains {
+		bargain, ok := rawBargain.(map[string]any)
+		if !ok {
+			return fmt.Errorf("%s: phase8 ring soul %q bargain must be object", path, soul["id"])
+		}
+		for _, field := range []string{"id", "name", "offerLine", "acceptMessage", "rejectMessage"} {
+			if raw, ok := bargain[field].(string); !ok || strings.TrimSpace(raw) == "" {
+				return fmt.Errorf("%s: phase8 bargain missing string field %q", path, field)
+			}
+		}
+		bargainID := bargain["id"].(string)
+		if seenBargains[bargainID] {
+			return fmt.Errorf("%s: duplicate phase8 bargain id %q", path, bargainID)
+		}
+		seenBargains[bargainID] = true
+		trigger, ok := bargain["trigger"].(map[string]any)
+		if !ok {
+			return fmt.Errorf("%s: phase8 bargain %q requires trigger", path, bargainID)
+		}
+		triggerType, ok := trigger["type"].(string)
+		if !ok || triggerType != "attunement" {
+			return fmt.Errorf("%s: phase8 bargain %q trigger type must be attunement", path, bargainID)
+		}
+		if level, ok := trigger["level"].(float64); !ok || level <= 0 || level > 3 {
+			return fmt.Errorf("%s: phase8 bargain %q trigger level must be 1..3", path, bargainID)
+		}
+		healthCost, ok := bargain["healthCost"].(map[string]any)
+		if !ok {
+			return fmt.Errorf("%s: phase8 bargain %q requires healthCost", path, bargainID)
+		}
+		if amount, ok := healthCost["amount"].(float64); !ok || amount <= 0 {
+			return fmt.Errorf("%s: phase8 bargain %q healthCost amount must be positive numeric", path, bargainID)
+		}
+		if nonlethal, ok := healthCost["nonlethal"].(bool); !ok || !nonlethal {
+			return fmt.Errorf("%s: phase8 bargain %q healthCost must be nonlethal", path, bargainID)
+		}
+		for _, field := range []string{"trustOnAccept", "trustOnReject"} {
+			if value, ok := bargain[field].(float64); !ok || value < -3 || value > 3 {
+				return fmt.Errorf("%s: phase8 bargain %q %s must stay within -3..3", path, bargainID, field)
+			}
+		}
+		for _, rawMemoryID := range asArray(bargain["revealMemoryIds"]) {
+			memoryID, ok := rawMemoryID.(string)
+			if !ok || strings.TrimSpace(memoryID) == "" {
+				return fmt.Errorf("%s: phase8 bargain %q has invalid revealMemoryIds entry", path, bargainID)
+			}
+			if !memoryIDs[memoryID] {
+				return fmt.Errorf("%s: phase8 bargain %q references unknown memory %q", path, bargainID, memoryID)
+			}
+		}
+		effects, ok := bargain["effects"].([]any)
+		if !ok || len(effects) == 0 {
+			return fmt.Errorf("%s: phase8 bargain %q requires effects", path, bargainID)
+		}
+		for _, rawEffect := range effects {
+			effect, ok := rawEffect.(map[string]any)
+			if !ok {
+				return fmt.Errorf("%s: phase8 bargain %q effect must be object", path, bargainID)
+			}
+			effectType, ok := effect["type"].(string)
+			if !ok || effectType != "damage_bonus" {
+				return fmt.Errorf("%s: phase8 bargain %q has invalid effect type %q", path, bargainID, effect["type"])
+			}
+			if raw, ok := effect["skillId"].(string); !ok || strings.TrimSpace(raw) == "" {
+				return fmt.Errorf("%s: phase8 bargain %q effect requires skillId", path, bargainID)
+			}
+			if _, ok := effect["amount"].(float64); !ok {
+				return fmt.Errorf("%s: phase8 bargain %q effect amount must be numeric", path, bargainID)
+			}
 		}
 	}
 	return nil
@@ -1231,6 +1447,11 @@ func validateReferences(path string, value any, seenIDs map[string]string, itemT
 			return err
 		}
 	}
+	if strings.Contains(cleanPath, "/phase8/") {
+		if err := validatePhase8References(path, value, seenIDs); err != nil {
+			return err
+		}
+	}
 	if strings.Contains(cleanPath, "/items/") {
 		for _, item := range records(value) {
 			if curse, ok := item["curse"].(map[string]any); ok {
@@ -1374,6 +1595,11 @@ func validatePhase5References(path string, value any, seenIDs map[string]string)
 	cleanPath := filepath.ToSlash(path)
 	if strings.Contains(cleanPath, "/phase5/items.json") {
 		for _, item := range records(value) {
+			if soulID, ok := item["soulId"].(string); ok && soulID != "" {
+				if _, exists := seenIDs[soulID]; !exists {
+					return fmt.Errorf("%s: phase5 item %q references unknown ring soul %q", path, item["id"], soulID)
+				}
+			}
 			for _, rawProperty := range asArray(item["properties"]) {
 				property, ok := rawProperty.(map[string]any)
 				if !ok {
@@ -1388,6 +1614,45 @@ func validatePhase5References(path string, value any, seenIDs map[string]string)
 						if _, exists := seenIDs[skillID]; !exists {
 							return fmt.Errorf("%s: phase5 property %q references unknown skill %q", path, property["id"], skillID)
 						}
+					}
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func validatePhase8References(path string, value any, seenIDs map[string]string) error {
+	cleanPath := filepath.ToSlash(path)
+	if !strings.Contains(cleanPath, "/phase8/ring_souls.json") {
+		return nil
+	}
+	for _, soul := range records(value) {
+		for _, rawWhisper := range asArray(soul["whispers"]) {
+			whisper, ok := rawWhisper.(map[string]any)
+			if !ok {
+				continue
+			}
+			for _, rawSkillID := range asArray(whisper["skillIds"]) {
+				skillID, _ := rawSkillID.(string)
+				if _, exists := seenIDs[skillID]; !exists {
+					return fmt.Errorf("%s: phase8 whisper %q references unknown skill %q", path, whisper["id"], skillID)
+				}
+			}
+		}
+		for _, rawBargain := range asArray(soul["bargains"]) {
+			bargain, ok := rawBargain.(map[string]any)
+			if !ok {
+				continue
+			}
+			for _, rawEffect := range asArray(bargain["effects"]) {
+				effect, ok := rawEffect.(map[string]any)
+				if !ok {
+					continue
+				}
+				if skillID, ok := effect["skillId"].(string); ok && skillID != "" {
+					if _, exists := seenIDs[skillID]; !exists {
+						return fmt.Errorf("%s: phase8 bargain %q references unknown skill %q", path, bargain["id"], skillID)
 					}
 				}
 			}

@@ -29,6 +29,7 @@
     "defaultKnowledgeState": "unidentified",
     "attunable": true,
     "maxAttunementLevel": 3,
+    "soulId": "varn_ashen_orator",
     "properties": [
       {
         "id": "phase5_ashen_ring_ember_memory",

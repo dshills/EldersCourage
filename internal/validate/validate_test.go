@@ -258,6 +258,62 @@ func TestDataRejectsPhase5AttunementRequirementOnNonAttunableItem(t *testing.T) 
 	}
 }
 
+func TestDataAcceptsPhase8RingSouls(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "phase4/skills.json", `[
+		{"id":"ember_bolt","classId":"ember_sage","name":"Ember Bolt","description":"Burn.","icon":"res://bolt.png","targetType":"enemy","resource":"mana","resourceCost":10,"cooldownTurns":0,"effects":[{"type":"damage","amount":10}],"messageTemplate":"Burn {damage}."}
+	]`)
+	writeFile(t, root, "phase8/ring_souls.json", `[
+		{"id":"varn_ashen_orator","name":"Varn","epithet":"The Ashen Orator","discipline":"Ember rhetoric","motivation":"To feel living breath again, even borrowed.","personalityTags":["eloquent"],"trustRange":{"min":-3,"max":3},
+		"whispers":[{"id":"varn_equip","trigger":"on_equip","line":"Warmth.","once":true},{"id":"varn_skill","trigger":"on_skill_use","line":"Burn.","cooldownTurns":2,"skillIds":["ember_bolt"]}],
+		"memories":[{"id":"varn_hall","title":"Hall","reveal":{"type":"attunement","level":1},"text":"Ash."}],
+		"bargains":[{"id":"breath_for_flame","name":"Breath for Flame","trigger":{"type":"attunement","level":2},"offerLine":"Offer.","acceptMessage":"Accepted.","rejectMessage":"Rejected.","healthCost":{"amount":5,"nonlethal":true},"trustOnAccept":1,"trustOnReject":-1,"revealMemoryIds":["varn_hall"],"effects":[{"type":"damage_bonus","skillId":"ember_bolt","amount":2}]}]}
+	]`)
+	writeFile(t, root, "phase5/items.json", `[
+		{"id":"phase5_ashen_ring","name":"Ashen Ring","type":"trinket","description":"Ring.","icon":"res://ring.png","quantity":1,"stackable":false,"equippable":true,"equipmentSlot":"trinket","stats":{},"defaultKnowledgeState":"unidentified","attunable":true,"maxAttunementLevel":3,"soulId":"varn_ashen_orator","properties":[]}
+	]`)
+
+	if _, err := Data(root); err != nil {
+		t.Fatalf("Data returned error: %v", err)
+	}
+}
+
+func TestDataRejectsPhase8UnknownSoulReference(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "phase5/items.json", `[
+		{"id":"phase5_ashen_ring","name":"Ashen Ring","type":"trinket","description":"Ring.","icon":"res://ring.png","quantity":1,"stackable":false,"equippable":true,"equipmentSlot":"trinket","stats":{},"defaultKnowledgeState":"unidentified","attunable":true,"maxAttunementLevel":3,"soulId":"missing_soul","properties":[]}
+	]`)
+
+	_, err := Data(root)
+	if err == nil {
+		t.Fatal("Data returned nil error for unknown phase8 soul reference")
+	}
+	if !strings.Contains(err.Error(), "unknown ring soul") {
+		t.Fatalf("error = %q, want unknown ring soul", err.Error())
+	}
+}
+
+func TestDataRejectsPhase8BargainWithoutNonlethalCost(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "phase4/skills.json", `[
+		{"id":"ember_bolt","classId":"ember_sage","name":"Ember Bolt","description":"Burn.","icon":"res://bolt.png","targetType":"enemy","resource":"mana","resourceCost":10,"cooldownTurns":0,"effects":[{"type":"damage","amount":10}],"messageTemplate":"Burn {damage}."}
+	]`)
+	writeFile(t, root, "phase8/ring_souls.json", `[
+		{"id":"varn_ashen_orator","name":"Varn","epithet":"The Ashen Orator","discipline":"Ember rhetoric","motivation":"Breath.","personalityTags":["eloquent"],"trustRange":{"min":-3,"max":3},
+		"whispers":[{"id":"varn_equip","trigger":"on_equip","line":"Warmth."}],
+		"memories":[{"id":"varn_hall","title":"Hall","reveal":{"type":"attunement","level":1},"text":"Ash."}],
+		"bargains":[{"id":"breath_for_flame","name":"Breath for Flame","trigger":{"type":"attunement","level":2},"offerLine":"Offer.","acceptMessage":"Accepted.","rejectMessage":"Rejected.","healthCost":{"amount":5,"nonlethal":false},"trustOnAccept":1,"trustOnReject":-1,"revealMemoryIds":["varn_hall"],"effects":[{"type":"damage_bonus","skillId":"ember_bolt","amount":2}]}]}
+	]`)
+
+	_, err := Data(root)
+	if err == nil {
+		t.Fatal("Data returned nil error for lethal phase8 bargain")
+	}
+	if !strings.Contains(err.Error(), "nonlethal") {
+		t.Fatalf("error = %q, want nonlethal", err.Error())
+	}
+}
+
 func TestDataRejectsMalformedJSON(t *testing.T) {
 	root := t.TempDir()
 	writeFile(t, root, "items/broken.json", `{"id":`)
