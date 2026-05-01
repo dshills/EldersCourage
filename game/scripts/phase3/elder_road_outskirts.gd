@@ -278,8 +278,8 @@ func _build_action_bar() -> Control:
 	bar.add_child(_action_group("Move", _movement_pad()))
 	var location_group := HBoxContainer.new()
 	location_group.add_theme_constant_override("separation", UITheme.BUTTON_GAP)
-	interact_button = _text_button("Open Container", "Open a container on this tile", "secondary")
-	interact_button.pressed.connect(state.open_current_container)
+	interact_button = _text_button("Open Container", "Use the primary action on this tile", "secondary")
+	interact_button.pressed.connect(_interact)
 	location_group.add_child(interact_button)
 	shrine_button = _text_button("Activate Shrine", "Activate a shrine on this tile", "success")
 	shrine_button.pressed.connect(state.activate_current_shrine)
@@ -836,8 +836,8 @@ func _refresh_actions() -> void:
 	var shrine: Dictionary = vm.get("shrine", {})
 	var attack: Dictionary = vm.get("attack", {})
 	interact_button.disabled = not bool(container.get("enabled", false))
-	interact_button.tooltip_text = "Open the container here." if bool(container.get("enabled", false)) else str(container.get("reason", "No unopened container here."))
-	interact_button.text = "Open Container\nReady" if bool(container.get("enabled", false)) else "Open Container\nNo container"
+	interact_button.tooltip_text = str(container.get("label", "Action")) if bool(container.get("enabled", false)) else str(container.get("reason", "No location action here."))
+	interact_button.text = "%s\n%s" % [container.get("label", "Action"), "Ready" if bool(container.get("enabled", false)) else "Unavailable"]
 	shrine_button.disabled = not bool(shrine.get("enabled", false))
 	shrine_button.tooltip_text = "Activate the shrine here." if bool(shrine.get("enabled", false)) else str(shrine.get("reason", "No unused shrine here."))
 	shrine_button.text = "Activate Shrine\nReady" if bool(shrine.get("enabled", false)) else "Activate Shrine\nNo shrine"
@@ -852,7 +852,9 @@ func _refresh_actions() -> void:
 
 func _interact() -> void:
 	var tile: Dictionary = state.current_tile()
-	if tile.has("containerId"):
+	if bool(state.can_transition_from_current_tile().get("available", false)):
+		state.transition_from_current_tile()
+	elif tile.has("containerId"):
 		state.open_current_container()
 	elif tile.has("shrineId"):
 		state.activate_current_shrine()

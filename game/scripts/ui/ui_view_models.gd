@@ -25,8 +25,26 @@ static func get_action_availability_view_model(game_state) -> Dictionary:
 	var container_available: bool = class_selected and tile.has("containerId") and not bool(game_state.containers_by_id.get(str(tile.get("containerId", "")), {}).get("opened", false))
 	var shrine_available: bool = class_selected and tile.has("shrineId") and not bool(game_state.shrines_by_id.get(str(tile.get("shrineId", "")), {}).get("activated", false))
 	var enemy_available: bool = class_selected and not bool(game_state.defeated) and (not game_state.active_enemy.is_empty() or tile.has("encounterId"))
+	var transition: Dictionary = game_state.can_transition_from_current_tile()
+	var primary_label := "Open Container"
+	var primary_enabled := container_available
+	var primary_reason := "" if container_available else "No location action here."
+	if bool(transition.get("available", false)):
+		primary_label = str(transition.get("label", "Travel"))
+		primary_enabled = bool(transition.get("enabled", false))
+		primary_reason = str(transition.get("reason", "The path is blocked."))
+	elif container_available:
+		primary_label = "Open Container"
+	elif tile.has("hazardId"):
+		primary_label = "Inspect Hazard"
+		primary_enabled = true
+		primary_reason = ""
+	elif str(tile.get("kind", "")) == "cairn":
+		primary_label = "Investigate Cairn"
+		primary_enabled = true
+		primary_reason = ""
 	return {
-		"container": { "enabled": container_available, "reason": "" if container_available else "No unopened container here." },
+		"container": { "enabled": primary_enabled, "reason": primary_reason, "label": primary_label },
 		"shrine": { "enabled": shrine_available, "reason": "" if shrine_available else "No unused shrine here." },
 		"attack": { "enabled": enemy_available, "reason": "" if enemy_available else "No active enemy target." },
 		"restartVisible": bool(game_state.defeated) or bool(game_state.zone.get("completed", false)),
@@ -140,6 +158,12 @@ static func _current_location_actions(game_state, tile: Dictionary) -> Array[Str
 		actions.append("Shrine spent" if bool(shrine.get("activated", false)) else "Activate Shrine")
 	if tile.has("encounterId") and not game_state.completed_encounters.has(str(tile["encounterId"])):
 		actions.append("Enemy nearby")
+	if bool(game_state.can_transition_from_current_tile().get("available", false)):
+		actions.append(str(game_state.can_transition_from_current_tile().get("label", "Travel")))
+	if tile.has("hazardId"):
+		actions.append("Hazard")
+	if str(tile.get("kind", "")) == "cairn":
+		actions.append("Investigate Cairn")
 	if str(tile.get("kind", "")) == "elder_stone":
 		actions.append("Quest objective")
 	return actions
@@ -155,11 +179,19 @@ static func _location_description(game_state, tile: Dictionary) -> String:
 			return "The shrine is quiet now, its old light spent."
 	if tile.has("encounterId") and game_state.completed_encounters.has(str(tile["encounterId"])):
 		return "The road is still scarred by combat, but the threat has ended."
+	if tile.has("hazardId") and game_state.completed_hazards.has(str(tile["hazardId"])):
+		return "The danger here has already spent itself."
 	return str(tile.get("description", "The Elder Road waits in ash and old stone."))
 
 static func _tile_marker(game_state, tile: Dictionary) -> String:
 	if tile.has("encounterId") and not game_state.completed_encounters.has(str(tile["encounterId"])):
 		return "Enemy"
+	if tile.has("hazardId"):
+		return "Cleared Hazard" if game_state.completed_hazards.has(str(tile["hazardId"])) else "Hazard"
+	if tile.has("transition"):
+		return "Travel"
+	if str(tile.get("kind", "")) == "cairn":
+		return "Lore"
 	if tile.has("containerId"):
 		var container: Dictionary = game_state.containers_by_id.get(str(tile["containerId"]), {})
 		return "Opened Cache" if bool(container.get("opened", false)) else "Cache"
@@ -173,6 +205,8 @@ static func _tile_marker(game_state, tile: Dictionary) -> String:
 static func _tile_status(game_state, tile: Dictionary) -> String:
 	if tile.has("encounterId") and game_state.completed_encounters.has(str(tile["encounterId"])):
 		return "Cleared"
+	if tile.has("hazardId"):
+		return "Cleared" if game_state.completed_hazards.has(str(tile["hazardId"])) else "Danger"
 	if tile.has("containerId"):
 		var container: Dictionary = game_state.containers_by_id.get(str(tile["containerId"]), {})
 		return "Opened" if bool(container.get("opened", false)) else "Unopened"
