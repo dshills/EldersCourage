@@ -134,14 +134,14 @@ func _build_screen() -> void:
 
 func _build_header() -> Control:
 	var frame := PanelContainer.new()
-	frame.custom_minimum_size = Vector2(0, 116)
+	frame.custom_minimum_size = Vector2(0, 132)
 	frame.add_theme_stylebox_override("panel", _stylebox(UITheme.color("panel_dark"), UITheme.color("border_gold"), 2, 8))
 	var header := HBoxContainer.new()
 	header.add_theme_constant_override("separation", 18)
 	frame.add_child(header)
 	var logo := TextureRect.new()
 	logo.texture = _load_texture(TITLE_PLAQUE_PATH)
-	logo.custom_minimum_size = Vector2(300, 92)
+	logo.custom_minimum_size = Vector2(320, 108)
 	logo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	header.add_child(logo)
 	var stack := VBoxContainer.new()
@@ -1012,9 +1012,17 @@ func _load_texture(path: String) -> Texture2D:
 	if error != OK:
 		image = Image.create(16, 16, false, Image.FORMAT_RGBA8)
 		image.fill(Color(0.45, 0.34, 0.18, 1.0))
+	elif path == TITLE_PLAQUE_PATH:
+		image = _image_with_vertical_padding(image, 14, 10)
 	var texture := ImageTexture.create_from_image(image)
 	texture_cache[path] = texture
 	return texture
+
+func _image_with_vertical_padding(image: Image, top_padding: int, bottom_padding: int) -> Image:
+	var padded := Image.create(image.get_width(), image.get_height() + top_padding + bottom_padding, false, Image.FORMAT_RGBA8)
+	padded.fill(Color(0, 0, 0, 0))
+	padded.blit_rect(image, Rect2i(Vector2i.ZERO, image.get_size()), Vector2i(0, top_padding))
+	return padded
 
 func _blank_spacer() -> Control:
 	var spacer := Control.new()
