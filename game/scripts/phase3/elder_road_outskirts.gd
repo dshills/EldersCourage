@@ -2,6 +2,7 @@ extends Control
 
 const Phase3State := preload("res://scripts/phase3/phase3_state.gd")
 const UITheme := preload("res://scripts/ui/ui_theme.gd")
+const UIViewModels := preload("res://scripts/ui/ui_view_models.gd")
 const UI_THEME_PATH := "res://resources/themes/elders_courage_theme.tres"
 const TITLE_PLAQUE_PATH := "res://assets/ui/title_plaque.png"
 const ATTACK_BUTTON_PATH := "res://assets/ui/button_attack.png"
@@ -416,35 +417,29 @@ func _refresh() -> void:
 	class_panel.visible = not state.class_selected
 
 func _refresh_header() -> void:
-	var position: Dictionary = state.player.get("position", {})
-	var tile: Dictionary = state.current_tile()
-	header_zone_label.text = str(state.zone.get("name", "Elder Road Outskirts"))
+	var vm: Dictionary = UIViewModels.get_header_view_model(state)
+	header_zone_label.text = str(vm.get("zone", "Elder Road Outskirts"))
 	header_meta_label.text = "%s  Lv. %d    XP %d/%d    Talent Pts %d    Gold %d" % [
-		state.current_class().get("name", "Choose Class"),
-		int(state.player.get("level", 1)),
-		int(state.player.get("xp", 0)),
-		int(state.player.get("xpToNextLevel", 50)),
-		int(state.player.get("talents", {}).get("availablePoints", 0)),
-		int(state.player.get("gold", 0)),
+		vm.get("className", "Choose Class"),
+		int(vm.get("level", 1)),
+		int(vm.get("xp", 0)),
+		int(vm.get("xpToNextLevel", 50)),
+		int(vm.get("talentPoints", 0)),
+		int(vm.get("gold", 0)),
 	]
-	header_xp_bar.max_value = float(maxi(1, int(state.player.get("xpToNextLevel", 50))))
-	header_xp_bar.value = float(state.player.get("xp", 0))
-	header_debug_label.visible = bool(state.ui.get("debugMode", false))
-	header_debug_label.text = "Position %d,%d | Tile %s | Encounter %s" % [
-		int(position.get("x", 0)),
-		int(position.get("y", 0)),
-		tile.get("id", "unknown"),
-		tile.get("encounterId", "none"),
-	]
+	header_xp_bar.max_value = float(maxi(1, int(vm.get("xpToNextLevel", 50))))
+	header_xp_bar.value = float(vm.get("xp", 0))
+	header_debug_label.visible = bool(vm.get("debugVisible", false))
+	header_debug_label.text = str(vm.get("debugText", ""))
 
 func _refresh_location_details() -> void:
-	var tile: Dictionary = state.current_tile()
-	var actions := _current_location_actions(tile)
-	location_details.text = "[b][color=#f0d680]%s[/color][/b]\n%s\n\nExits: %s\nAvailable: %s" % [
-		tile.get("name", "Unknown Road"),
-		_location_description(tile),
-		", ".join(_current_exits()),
-		", ".join(actions) if not actions.is_empty() else "None",
+	var vm: Dictionary = UIViewModels.get_location_details_view_model(state)
+	location_details.text = "[b][color=#f0d680]%s[/color][/b]\n%s\n\nExits: %s\nAvailable: %s\nStatus: %s" % [
+		vm.get("name", "Unknown Road"),
+		vm.get("description", ""),
+		", ".join(vm.get("exits", [])),
+		vm.get("available", "None"),
+		vm.get("status", "Unknown"),
 	]
 
 func _current_exits() -> Array[String]:
@@ -549,21 +544,12 @@ func _refresh_stats() -> void:
 func _refresh_skills() -> void:
 	for child in skill_bar.get_children():
 		child.queue_free()
-	for skill_id in state.player.get("skills", {}).get("knownSkillIds", []):
-		var skill: Dictionary = state.skills_by_id.get(str(skill_id), {})
-		if skill.is_empty():
-			continue
-		var cooldown: int = int(state.player.get("skills", {}).get("cooldowns", {}).get(str(skill_id), 0))
-		var cost: int = state.effective_skill_cost(skill)
-		var disabled_reason := _skill_disabled_reason(skill, cooldown, cost)
-		var secondary := "CD %d" % cooldown if cooldown > 0 else ("%d Mana" % cost if str(skill.get("resource", "")) == "mana" and cost > 0 else "Ready")
-		if disabled_reason != "":
-			secondary = disabled_reason
-		var button := _text_button(str(skill.get("name", skill_id)), _skill_tooltip(skill, cooldown, cost, disabled_reason), "magic", secondary)
+	for model in UIViewModels.get_skill_button_view_models(state):
+		var button := _text_button(str(model.get("name", "")), str(model.get("tooltip", "")), "magic", str(model.get("sublabel", "")))
 		button.custom_minimum_size = Vector2(136, 58)
-		button.disabled = disabled_reason != ""
+		button.disabled = bool(model.get("disabled", false))
 		_apply_skill_button_style(button)
-		button.pressed.connect(func(id := str(skill_id)) -> void: state.use_skill(id))
+		button.pressed.connect(func(id := str(model.get("id", ""))) -> void: state.use_skill(id))
 		skill_bar.add_child(button)
 
 func _refresh_talents() -> void:
@@ -654,8 +640,7 @@ func _refresh_messages() -> void:
 	for child in message_box.get_children():
 		child.queue_free()
 	var visible_messages: Array = state.messages.duplicate()
-	visible_messages.reverse()
-	visible_messages = visible_messages.slice(0, mini(8, visible_messages.size()))
+	visible_messages = UIViewModels.get_visible_messages(state, 6)
 	for message in visible_messages:
 		var line := Label.new()
 		var type := str(message.get("type", "info"))
@@ -708,17 +693,17 @@ func _refresh_inventory() -> void:
 		]
 
 func _refresh_actions() -> void:
-	var tile: Dictionary = state.current_tile()
-	var container_available: bool = state.class_selected and tile.has("containerId") and not bool(state.containers_by_id.get(str(tile.get("containerId", "")), {}).get("opened", false))
-	var shrine_available: bool = state.class_selected and tile.has("shrineId") and not bool(state.shrines_by_id.get(str(tile.get("shrineId", "")), {}).get("activated", false))
-	interact_button.disabled = not container_available
-	interact_button.tooltip_text = "Open the container here." if container_available else "No unopened container here."
-	shrine_button.disabled = not shrine_available
-	shrine_button.tooltip_text = "Activate the shrine here." if shrine_available else "No unused shrine here."
-	var enemy_available: bool = state.class_selected and not state.defeated and (not state.active_enemy.is_empty() or tile.has("encounterId"))
-	attack_button.disabled = not enemy_available
-	attack_button.tooltip_text = "Attack active enemy." if enemy_available else "No active enemy target."
-	restart_button.visible = state.defeated or bool(state.zone.get("completed", false))
+	var vm: Dictionary = UIViewModels.get_action_availability_view_model(state)
+	var container: Dictionary = vm.get("container", {})
+	var shrine: Dictionary = vm.get("shrine", {})
+	var attack: Dictionary = vm.get("attack", {})
+	interact_button.disabled = not bool(container.get("enabled", false))
+	interact_button.tooltip_text = "Open the container here." if bool(container.get("enabled", false)) else str(container.get("reason", "No unopened container here."))
+	shrine_button.disabled = not bool(shrine.get("enabled", false))
+	shrine_button.tooltip_text = "Activate the shrine here." if bool(shrine.get("enabled", false)) else str(shrine.get("reason", "No unused shrine here."))
+	attack_button.disabled = not bool(attack.get("enabled", false))
+	attack_button.tooltip_text = "Attack active enemy." if bool(attack.get("enabled", false)) else str(attack.get("reason", "No active enemy target."))
+	restart_button.visible = bool(vm.get("restartVisible", false))
 
 func _interact() -> void:
 	var tile: Dictionary = state.current_tile()
@@ -754,24 +739,10 @@ func _move_to_adjacent(target: Vector2i) -> void:
 		state.move_player("north")
 
 func _tile_text(tile: Dictionary) -> String:
-	var position := _tile_position(tile)
-	var player_position: Dictionary = state.player.get("position", {})
-	var marker := "YOU\n" if position.x == int(player_position.get("x", 0)) and position.y == int(player_position.get("y", 0)) else ""
-	var suffix := _tile_marker(tile)
-	return "%s%s\n%s" % [marker, suffix, tile.get("name", "Tile")]
+	return str(UIViewModels.get_tile_view_model(state, tile).get("label", tile.get("name", "Tile")))
 
 func _tile_marker(tile: Dictionary) -> String:
-	if tile.has("encounterId") and not state.completed_encounters.has(str(tile["encounterId"])):
-		return "Enemy"
-	if tile.has("containerId"):
-		var container: Dictionary = state.containers_by_id.get(str(tile["containerId"]), {})
-		return "Opened Cache" if bool(container.get("opened", false)) else "Cache"
-	if tile.has("shrineId"):
-		var shrine: Dictionary = state.shrines_by_id.get(str(tile["shrineId"]), {})
-		return "Spent Shrine" if bool(shrine.get("activated", false)) else "Shrine"
-	if str(tile.get("kind", "")) == "elder_stone":
-		return "Objective"
-	return "Road"
+	return str(UIViewModels.get_tile_view_model(state, tile).get("marker", "Road"))
 
 func _tile_position(tile: Dictionary) -> Vector2i:
 	var raw: Array = tile.get("position", [0, 0])
