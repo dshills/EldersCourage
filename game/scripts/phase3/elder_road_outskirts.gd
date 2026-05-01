@@ -61,6 +61,12 @@ func _unhandled_input(event: InputEvent) -> void:
 		_interact()
 	elif event.is_action_pressed("phase3_talents"):
 		state.toggle_talent_panel()
+	elif event.is_action_pressed("phase3_quests"):
+		state.toggle_panel("quests")
+	elif event.is_action_pressed("phase3_debug"):
+		state.toggle_debug_mode()
+	elif event.is_action_pressed("ui_cancel"):
+		state.handle_escape()
 
 func _build_screen() -> void:
 	var background := ColorRect.new()
@@ -197,7 +203,7 @@ func _build_action_bar() -> Control:
 	talent_button.pressed.connect(state.toggle_talent_panel)
 	bar.add_child(talent_button)
 	var quest_button := _image_button(_load_texture(QUEST_BUTTON_PATH), "Quest tracker")
-	quest_button.pressed.connect(func() -> void: quest_box.grab_focus())
+	quest_button.pressed.connect(func() -> void: state.toggle_panel("quests"))
 	bar.add_child(quest_button)
 	restart_button = _text_button("Restart", "Restart Phase 3")
 	restart_button.pressed.connect(state.restart_game)
@@ -413,7 +419,7 @@ func _refresh_skills() -> void:
 		skill_bar.add_child(button)
 
 func _refresh_talents() -> void:
-	talent_panel.visible = state.talent_panel_visible
+	talent_panel.visible = str(state.ui.get("activePanel", "")) == "talents"
 	for child in talent_box.get_children():
 		child.queue_free()
 	var tree: Dictionary = state.current_talent_tree()
@@ -475,7 +481,7 @@ func _refresh_messages() -> void:
 		message_box.add_child(line)
 
 func _refresh_inventory() -> void:
-	inventory_panel.visible = state.inventory_visible
+	inventory_panel.visible = str(state.ui.get("activePanel", "")) == "inventory"
 	for child in inventory_grid.get_children():
 		child.queue_free()
 	var inventory: Array = state.player.get("inventory", [])
@@ -737,6 +743,9 @@ func _ensure_inputs() -> void:
 	_add_key_action("phase3_attack", KEY_SPACE)
 	_add_key_action("phase3_interact", KEY_E)
 	_add_key_action("phase3_talents", KEY_Y)
+	_add_key_action("phase3_talents", KEY_T)
+	_add_key_action("phase3_quests", KEY_Q)
+	_add_key_action("phase3_debug", KEY_F3)
 	_add_key_action("phase3_move_north", KEY_UP)
 	_add_key_action("phase3_move_south", KEY_DOWN)
 	_add_key_action("phase3_move_west", KEY_LEFT)

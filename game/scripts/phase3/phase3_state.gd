@@ -21,6 +21,7 @@ var selected_item_id := ""
 var selected_skill_id := ""
 var inventory_visible := false
 var talent_panel_visible := false
+var ui := { "activePanel": "", "debugMode": false, "selectedTileId": "", "lastAnimation": {} }
 var completed_encounters := {}
 var completion_reward_claimed := false
 var defeated := false
@@ -110,6 +111,7 @@ func _reset_world() -> void:
 	next_item_instance_number = 1
 	inventory_visible = false
 	talent_panel_visible = false
+	ui = { "activePanel": "", "debugMode": false, "selectedTileId": "", "lastAnimation": {} }
 	completed_encounters = {}
 	completion_reward_claimed = false
 	defeated = false
@@ -407,12 +409,47 @@ func identify_target_item(target_instance_id: String) -> void:
 	state_changed.emit()
 
 func toggle_inventory() -> void:
-	inventory_visible = not inventory_visible
-	state_changed.emit()
+	toggle_panel("inventory")
 
 func toggle_talent_panel() -> void:
-	talent_panel_visible = not talent_panel_visible
+	toggle_panel("talents")
+
+func open_panel(panel_id: String) -> void:
+	ui["activePanel"] = panel_id
+	inventory_visible = panel_id == "inventory"
+	talent_panel_visible = panel_id == "talents"
 	state_changed.emit()
+
+func close_panel() -> void:
+	ui["activePanel"] = ""
+	inventory_visible = false
+	talent_panel_visible = false
+	state_changed.emit()
+
+func toggle_panel(panel_id: String) -> void:
+	if str(ui.get("activePanel", "")) == panel_id:
+		close_panel()
+		return
+	open_panel(panel_id)
+
+func toggle_debug_mode() -> void:
+	ui["debugMode"] = not bool(ui.get("debugMode", false))
+	state_changed.emit()
+
+func select_tile(tile_id: String) -> void:
+	ui["selectedTileId"] = tile_id
+	state_changed.emit()
+
+func push_ui_animation(event_type: String, target_id: String = "") -> void:
+	ui["lastAnimation"] = { "id": "ui_%d" % Time.get_ticks_msec(), "type": event_type, "targetId": target_id, "createdAt": Time.get_ticks_msec() }
+	state_changed.emit()
+
+func handle_escape() -> void:
+	if str(inventory_interaction.get("mode", "normal")) == "identify_target":
+		cancel_item_target_mode()
+		return
+	if str(ui.get("activePanel", "")) != "":
+		close_panel()
 
 func restart_game() -> void:
 	reset()
