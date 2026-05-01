@@ -1,7 +1,9 @@
 # EldersCourage
 
-EldersCourage is a playable dark fantasy RPG prototype. The project currently has eight implemented prototype slices:
+EldersCourage is a playable dark fantasy RPG prototype. The project currently has ten implemented prototype slices:
 
+- Phase 10 multi-zone expansion: Ashwood Glen second zone, Elder Stone transitions, per-zone state, environmental hazards, stronger encounters, zone quest chain, Ashwood loot/items, and multi-zone UI/action support.
+- Phase 9 item resonance and merging: data-driven item resonances, discovery triggers, resonance combat effects, resonance item details, first item merge, Staff of the Ashen Orator, and merge UI.
 - Phase 8 prototype polish and acceptance pass: README/setup coverage, static acceptance reporting, automated Go/data verification, and documented manual Godot verification gaps.
 - Phase 7 data validation and content completion: required content counts, richer item/cursed/synergy data, reference/tag validation, and deterministic loot generation.
 - Phase 6 presentation pass: structured header, larger readable map tiles, current-location details, sectioned character/equipment/quest/log panel, grouped action dock, improved skill buttons, quest/log overlay, keyboard shortcuts, and centralized UI state.
@@ -11,7 +13,7 @@ EldersCourage is a playable dark fantasy RPG prototype. The project currently ha
 - Phase 2 first-adventure loop: branded fantasy UI, chest interaction, loot pickup, inventory, enemy targeting, basic attack, quest tracker, and message log.
 - Phase 1 Ashen Catacombs dungeon: real-time combat, loot, equipment, cursed soul-rings, attunement, item echoes, death echoes, elite enemies, boss encounter, and completion reward.
 
-The Godot launch scene is currently `game/scenes/phase3/ElderRoadOutskirts.tscn`, now with class selection, Phase 5 item discovery, the Phase 6 UI presentation pass, and Phase 7 completed content data layered into the Elder Road loop.
+The Godot launch scene is currently `game/scenes/phase3/ElderRoadOutskirts.tscn`, now with class selection, item discovery, ring souls, item resonance/merging, Ashwood Glen zone travel, hazards, and multi-zone quest progression layered into the Elder Road loop.
 
 ## Requirements
 
@@ -37,12 +39,14 @@ To load earlier slices directly:
 /Applications/Godot.app/Contents/MacOS/Godot --path game res://scenes/dungeons/AshenCatacombsRun.tscn
 ```
 
+For a player-facing walkthrough with concrete examples, see `docs/HOW_TO_PLAY.md`.
+
 ## Current Godot Loop Controls
 
 - Choose Roadwarden, Ember Sage, or Gravebound Scout, then click Begin Journey.
 - WASD or arrow keys: move one tile.
 - Click an adjacent map tile to move there.
-- `E`: interact with current tile.
+- `E`: interact with current tile, including travel, hazards, cairns, containers, shrines, and encounters.
 - `Space`: attack active enemy.
 - `I`: open or close inventory.
 - `Y` or `T`: open or close talents.
@@ -50,14 +54,17 @@ To load earlier slices directly:
 - `F3`: toggle debug location details in the header.
 - `Escape`: close the active panel or cancel identify target mode.
 - `1` and `2`: use class skill slots.
-- Open Container button: open a chest/cache on current tile.
+- Primary action button: travel, inspect hazards/cairns, open a chest/cache, or use the current tile's main interaction.
 - Activate Shrine button: activate a shrine on current tile.
 - Skill buttons: use known class skills and show cost/cooldown/disabled reason.
 - Talents button: open or close the class talent panel.
 - Equip button: equip selected inventory item.
 - Use button: use selected consumable, or enter identify target mode when an Identify Scroll is selected.
+- Merge button: open a known or hinted merge recipe for the selected item.
 - During identify target mode, click a highlighted inventory item to identify it.
 - Cancel Identify button: leave identify target mode.
+- At the Elder Stone, complete The Elder Road quest stage to unlock travel to Ashwood Glen.
+- In Ashwood Glen, use Return Road to travel back to Elder Road Outskirts.
 - Restart button: reset after defeat or completion.
 
 ## Phase 2 Controls
@@ -115,17 +122,22 @@ go run ./cmd/elders acceptance-report ./game/data
 
 - `game/`: Godot project, scenes, scripts, UI placeholders, and JSON content.
 - `game/assets/`: approved atlas-derived UI, item, portrait, terrain, sprite, icon, tile, and VFX assets.
-- `game/data/`: data-driven Phase 1 through Phase 7 content.
+- `game/data/`: data-driven Phase 1 through Phase 10 content.
 - `game/data/items/phase7_items.json`: additional weapons, armor, rings, hidden properties, curses, echoes, and synergy tags used to satisfy content completeness checks.
 - `game/data/curses/`: reusable curse definitions hydrated into item data at runtime.
 - `game/data/synergies/`: prototype synergy definitions validated by the Go tooling.
 - `game/data/phase5/`: discovery item definitions, hidden properties, attunement requirements, level-gated properties, and curses.
+- `game/data/phase10/`: Ashwood Glen zone, hazards, and Ashes Beyond the Stone quest chain.
+- `game/data/phase9/`: item resonance and merge definitions.
+- `game/data/phase8/`: ring soul definitions, Varn whispers, memories, and bargains.
 - `game/data/phase4/`: class, skill, talent, and starter item definitions.
 - `game/data/phase3/`: Elder Road zone, items, enemies, loot tables, containers, shrine, and quest chain.
 - `game/data/phase2/`: first-adventure loop items, quest, and enemy definitions.
 - `game/scenes/phase3/`: Phase 3 launch scene.
 - `game/scenes/phase2/`: Phase 2 launch scene.
-- `game/scripts/phase3/`: Phase 3 state/actions and Elder Road UI shell script, extended with Phase 4 class/skill/talent runtime, Phase 5 item discovery, and Phase 6 UI state/presentation.
+- `game/scripts/phase3/`: launch-scene state/actions and UI shell script, extended with class/skill/talent runtime, item discovery, ring souls, item resonance/merge support, Ashwood Glen travel, hazards, and multi-zone UI state.
+- `game/scripts/phase9/`: item resonance and item merge helpers.
+- `game/scripts/phase8/`: ring soul helper logic.
 - `game/scripts/phase2/`: Phase 2 state/actions and UI shell script.
 - `cmd/elders/`: Go CLI entry point for validation, loot generation, and acceptance reporting.
 - `internal/`: Go validation, loot generation, reporting, and deterministic phase state-helper tests.
@@ -136,6 +148,10 @@ go run ./cmd/elders acceptance-report ./game/data
 - `specs/phase4/`: Phase 4 spec, plan, and acceptance record.
 - `specs/phase5/`: Phase 5 spec, plan, and acceptance record.
 - `specs/phase6/`: Phase 6 spec, plan, and acceptance record.
+- `specs/phase7/`: Phase 7 spec, plan, acceptance record, and UI verification notes.
+- `specs/phase8/`: Phase 8 spec, plan, acceptance record, and ring soul verification checklist.
+- `specs/phase9/`: Phase 9 spec, plan, acceptance record, and item resonance verification checklist.
+- `specs/phase10/`: Phase 10 spec, plan, acceptance record, and Ashwood Glen verification checklist.
 
 ## Specs and Status
 
@@ -151,7 +167,15 @@ go run ./cmd/elders acceptance-report ./game/data
 - Phase 5 acceptance: `specs/phase5/ACCEPTANCE.md`
 - Phase 6 plan: `specs/phase6/PLAN.md`
 - Phase 6 acceptance: `specs/phase6/ACCEPTANCE.md`
-- Prototype Phase 7 and Phase 8 status: `specs/prototype/ACCEPTANCE.md`
+- Phase 7 plan: `specs/phase7/PLAN.md`
+- Phase 7 acceptance: `specs/phase7/ACCEPTANCE.md`
+- Phase 8 plan: `specs/phase8/PLAN.md`
+- Phase 8 acceptance: `specs/phase8/ACCEPTANCE.md`
+- Phase 9 plan: `specs/phase9/PLAN.md`
+- Phase 9 acceptance: `specs/phase9/ACCEPTANCE.md`
+- Phase 10 plan: `specs/phase10/PLAN.md`
+- Phase 10 acceptance: `specs/phase10/ACCEPTANCE.md`
+- Prototype status: `specs/prototype/ACCEPTANCE.md`
 
 ## Static Acceptance Coverage
 
