@@ -740,7 +740,7 @@ func _refresh_inventory() -> void:
 		item_details.text = prompt
 	else:
 		var selected_definition: Dictionary = state.item_definition(selected)
-		item_details.text = "[b][color=#f0d680]%s[/color][/b]\n%s\nKnowledge: %s\n\n%s\n\nQuantity: %d%s%s%s" % [
+		item_details.text = "[b][color=#f0d680]%s[/color][/b]\n%s\nKnowledge: %s\n\n%s\n\nQuantity: %d%s%s%s%s" % [
 			state.display_name(selected),
 			selected_definition.get("type", "item"),
 			selected.get("knowledgeState", "known"),
@@ -749,6 +749,7 @@ func _refresh_inventory() -> void:
 			_stats_text(selected_definition.get("stats", {})),
 			_discovery_text(selected),
 			_soul_text(selected),
+			_resonance_text(selected),
 		]
 
 func _refresh_bargain_panel() -> void:
@@ -1171,6 +1172,50 @@ func _soul_text(item: Dictionary) -> String:
 	if lines.is_empty():
 		return ""
 	return "\n\n[color=#d6c4ff][b]Ring Soul[/b][/color]\n%s" % "\n".join(lines)
+
+func _resonance_text(item: Dictionary) -> String:
+	var item_id := str(item.get("itemId", ""))
+	var lines: Array[String] = []
+	for resonance in state.active_resonances():
+		if not _resonance_involves_item(resonance, item_id):
+			continue
+		var resonance_id := str(resonance.get("id", ""))
+		if state.is_resonance_discovered(resonance_id):
+			var prefix := "Cursed, active" if bool(resonance.get("cursed", false)) else "Active"
+			lines.append("%s: %s - %s" % [prefix, resonance.get("name", resonance_id), _resonance_effect_summary(resonance)])
+		elif str(resonance.get("visibility", "")) == "hinted" or str(resonance.get("visibility", "")) == "visible":
+			lines.append("Hint: %s" % resonance.get("hint", "Something stirs between these items."))
+	for resonance in state.item_resonances_by_id.values():
+		var resonance_id := str(resonance.get("id", ""))
+		if state.is_resonance_discovered(resonance_id) and _resonance_involves_item(resonance, item_id) and not state.active_resonances().has(resonance):
+			lines.append("Inactive: %s" % resonance.get("name", resonance_id))
+	if lines.is_empty():
+		return ""
+	return "\n\n[color=#94c7b8][b]Resonance[/b][/color]\n%s" % "\n".join(lines)
+
+func _resonance_involves_item(resonance: Dictionary, item_id: String) -> bool:
+	for required_item_id in resonance.get("requiredItemIds", []):
+		if str(required_item_id) == item_id:
+			return true
+	return false
+
+func _resonance_effect_summary(resonance: Dictionary) -> String:
+	var parts: Array[String] = []
+	for effect in resonance.get("effects", []):
+		match str(effect.get("type", "")):
+			"stat_bonus", "stat_penalty":
+				parts.append("%s %+d" % [effect.get("stat", "stat"), int(effect.get("amount", 0))])
+			"skill_damage_bonus":
+				parts.append("%s damage %+d" % [state.skills_by_id.get(str(effect.get("skillId", "")), {}).get("name", effect.get("skillId", "skill")), int(effect.get("amount", 0))])
+			"skill_heal_bonus":
+				parts.append("%s healing %+d" % [state.skills_by_id.get(str(effect.get("skillId", "")), {}).get("name", effect.get("skillId", "skill")), int(effect.get("amount", 0))])
+			"skill_cost_modifier":
+				parts.append("skill cost %+d" % int(effect.get("amount", 0)))
+			"curse_health_cost":
+				parts.append("skill use health cost %+d" % int(effect.get("amount", 0)))
+	if parts.is_empty():
+		return str(resonance.get("description", ""))
+	return ", ".join(parts)
 
 func _skill_names(skill_ids: Array) -> Array[String]:
 	var names: Array[String] = []
