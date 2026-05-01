@@ -101,7 +101,8 @@ static func get_tile_view_model(game_state, tile: Dictionary) -> Dictionary:
 static func _debug_text(game_state) -> String:
 	var position: Dictionary = game_state.player.get("position", {})
 	var tile: Dictionary = game_state.current_tile()
-	return "Position %d,%d | Tile %s | Encounter %s" % [
+	return "Zone %s | Position %d,%d | Tile %s | Encounter %s" % [
+		game_state.current_zone_id,
 		int(position.get("x", 0)),
 		int(position.get("y", 0)),
 		tile.get("id", "unknown"),

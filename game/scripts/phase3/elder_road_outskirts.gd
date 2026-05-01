@@ -588,6 +588,7 @@ func _location_description(tile: Dictionary) -> String:
 func _refresh_map() -> void:
 	for child in map_grid.get_children():
 		child.queue_free()
+	map_grid.columns = int(state.zone.get("width", 5))
 	var tiles: Array = state.zone.get("tiles", [])
 	tiles.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
 		var ap := _tile_position(a)
@@ -903,16 +904,18 @@ func _tile_texture(kind: String) -> Texture2D:
 			return _load_texture(GRASS_TILE_PATH)
 		"woods":
 			return _load_texture(GRASS_TILE_PATH)
-		"chest":
+		"chest", "cache":
 			return _load_texture(CHEST_PATH)
 		"shrine":
 			return _load_texture(FIRE_RUNE_PATH)
 		"ruins":
 			return _load_texture(STONE_TILE_PATH)
-		"gate":
+		"gate", "entry", "return":
 			return _load_texture(ICE_TILE_PATH)
-		"elder_stone":
+		"elder_stone", "hazard", "objective":
 			return _load_texture(LAVA_TILE_PATH)
+		"ash_path", "burned_woods", "cairn", "enemy":
+			return _load_texture(STONE_TILE_PATH)
 		_:
 			return _load_texture(STONE_TILE_PATH)
 
@@ -923,6 +926,10 @@ func _tile_style(tile: Dictionary) -> StyleBoxFlat:
 		return _stylebox(Color(0.20, 0.15, 0.06), Color(1.0, 0.77, 0.22), 4, 6)
 	if tile.has("encounterId") and not state.completed_encounters.has(str(tile["encounterId"])):
 		return _stylebox(Color(0.14, 0.07, 0.06), Color(0.72, 0.20, 0.12), 3, 5)
+	if tile.has("hazardId"):
+		if state.completed_hazards.has(str(tile["hazardId"])):
+			return _stylebox(Color(0.10, 0.08, 0.07), Color(0.34, 0.27, 0.22), 2, 5)
+		return _stylebox(Color(0.18, 0.075, 0.035), Color(0.92, 0.30, 0.14), 3, 5)
 	if tile.has("containerId"):
 		var container: Dictionary = state.containers_by_id.get(str(tile["containerId"]), {})
 		if bool(container.get("opened", false)):
@@ -935,6 +942,12 @@ func _tile_style(tile: Dictionary) -> StyleBoxFlat:
 		return _stylebox(Color(0.08, 0.10, 0.09), Color(0.30, 0.62, 0.48), 3, 5)
 	if str(tile.get("kind", "")) == "elder_stone":
 		return _stylebox(Color(0.12, 0.08, 0.12), Color(0.70, 0.45, 0.86), 3, 5)
+	if tile.has("transition"):
+		return _stylebox(Color(0.065, 0.09, 0.12), Color(0.42, 0.68, 0.86), 3, 5)
+	if str(tile.get("kind", "")) == "cairn":
+		return _stylebox(Color(0.11, 0.095, 0.085), Color(0.60, 0.56, 0.48), 2, 5)
+	if ["ash_path", "burned_woods", "entry", "return", "objective", "enemy"].has(str(tile.get("kind", ""))):
+		return _stylebox(Color(0.09, 0.075, 0.065), Color(0.44, 0.31, 0.22), 2, 5)
 	if str(tile.get("state", "")) == "visited":
 		return _stylebox(Color(0.13, 0.11, 0.08), Color(0.46, 0.36, 0.20), 2, 5)
 	return _stylebox(Color(0.09, 0.085, 0.075), Color(0.28, 0.24, 0.18), 2, 5)
